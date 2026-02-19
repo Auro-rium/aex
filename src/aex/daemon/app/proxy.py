@@ -86,6 +86,11 @@ async def proxy_chat_completions(request: Request, agent_info: dict = Depends(ge
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
+    # Validate messages field
+    messages = body.get("messages")
+    if not isinstance(messages, list):
+        raise HTTPException(status_code=400, detail="'messages' must be a non-empty list")
+
     model_name = body.get("model") or config_loader.get_default_model()
 
     model_config = config_loader.get_model(model_name)

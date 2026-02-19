@@ -19,6 +19,7 @@ env/
 .idea/
 *.swp
 *.swo
+.gemini/
 
 # AEX runtime (user-local, never in repo)
 .env
@@ -32,7 +33,3 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
-
-# Build artifacts
-*.so
-tests/infra_assault.py

@@ -29,7 +29,7 @@ def create_agent(
     no_function_calling: bool = typer.Option(False, "--no-function-calling", help="Disable function calling"),
     allow_vision: bool = typer.Option(False, "--allow-vision", help="Allow vision (image inputs)"),
     strict: bool = typer.Option(False, "--strict", help="Enable strict mode"),
-    ttl: Optional[int] = typer.Option(None, "--ttl", help="Token time-to-live in hours (default: no expiry)"),
+    ttl: Optional[float] = typer.Option(None, "--ttl", help="Token time-to-live in hours. Supports fractional hours (e.g., 0.001 for ~3.6 seconds)"),
     scope: str = typer.Option("execution", "--scope", help="Token scope: 'execution' or 'read-only'"),
     allow_passthrough: bool = typer.Option(False, "--allow-passthrough", help="Allow agent to use own provider API key"),
 ):
@@ -224,7 +224,7 @@ def delete_agent(name: str):
 @agent_app.command("rotate-token")
 def rotate_token(
     name: str,
-    ttl: Optional[int] = typer.Option(None, "--ttl", help="New token TTL in hours"),
+    ttl: Optional[float] = typer.Option(None, "--ttl", help="New token TTL in hours. Supports fractional hours (e.g., 0.001 for ~3.6 seconds)"),
 ):
     """Rotate an agent's API token (invalidates old token)."""
     os.environ["AEX_DB_PATH"] = str(DB_PATH)
