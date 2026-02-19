@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException
-from .db import get_db_connection
+from ..db import get_db_connection
 from .logging_config import StructuredLogger
 
 logger = StructuredLogger(__name__)
