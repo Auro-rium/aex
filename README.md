@@ -60,21 +60,18 @@ pip install -e .
 ## Quick Start
 
 ```bash
-# 1. Initialize AEX (creates ~/.aex with config + database)
+# 1. Initialize AEX (creates ~/.aex with config + database, and prompts for API key)
 aex init
 
-# 2. Set your provider API key
-echo "GROQ_API_KEY=gsk_your_key_here" > ~/.aex/.env
-
-# 3. Start the daemon
+# 2. Start the daemon
 aex daemon start
 
-# 4. Create an agent with $5 budget and 30 RPM limit
+# 3. Create an agent with $5 budget and 30 RPM limit
 aex agent create my-agent 5.00 30
 
-# 5. Use the token with any OpenAI-compatible SDK
+# 4. Use the token with any OpenAI-compatible SDK
 export OPENAI_BASE_URL=http://127.0.0.1:9000/v1
-export OPENAI_API_KEY=<token-from-step-4>
+export OPENAI_API_KEY=<token-from-step-3>
 ```
 
 That's it. Every call your agent makes is now governed.
@@ -200,11 +197,13 @@ models:
       vision: false
 ```
 
-Provider API keys go in `~/.aex/.env`:
+Provider API keys are securely persisted in `~/.aex/.env` after being entered interactively during `aex init`.
+
+If you need to update them manually later:
 
 ```bash
-GROQ_API_KEY=gsk_...
-OPENAI_API_KEY=sk-...
+GROQ_API_KEY=your_groq_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 ## Security Model
