@@ -25,6 +25,11 @@ _MIGRATE_COLUMNS = [
     ("token_scope", "TEXT DEFAULT 'execution'"),  # execution | read-only
     # v1.2.0 — passthrough mode
     ("allow_passthrough", "INTEGER DEFAULT 0"),
+    # v2.0.0 — token governance
+    ("max_tokens_per_request", "INTEGER"),
+    ("max_tokens_per_minute", "INTEGER"),
+    ("tokens_used_prompt", "INTEGER DEFAULT 0"),
+    ("tokens_used_completion", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -54,6 +59,10 @@ def init_db():
                 allowed_models TEXT,
                 max_input_tokens INTEGER,
                 max_output_tokens INTEGER,
+                max_tokens_per_request INTEGER,
+                max_tokens_per_minute INTEGER,
+                tokens_used_prompt INTEGER DEFAULT 0,
+                tokens_used_completion INTEGER DEFAULT 0,
                 allow_streaming INTEGER DEFAULT 1,
                 allow_tools INTEGER DEFAULT 1,
                 allowed_tool_names TEXT,
@@ -99,6 +108,7 @@ def init_db():
                 agent TEXT PRIMARY KEY,
                 window_start TEXT,
                 request_count INTEGER DEFAULT 0,
+                tokens_count INTEGER DEFAULT 0,
                 FOREIGN KEY(agent) REFERENCES agents(name)
             )
         """)
@@ -127,4 +137,15 @@ def _migrate_schema():
                     pass  # Column already exists — safe to ignore
                 else:
                     raise
+
+        # Migrate rate_windows table
+        try:
+            cursor.execute("ALTER TABLE rate_windows ADD COLUMN tokens_count INTEGER DEFAULT 0")
+            logger.info("Schema migration: added column", column="tokens_count", table="rate_windows")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e).lower():
+                pass
+            else:
+                raise
+
         conn.commit()

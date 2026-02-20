@@ -1,1 +1,0 @@
-"""AEX frontend static assets."""

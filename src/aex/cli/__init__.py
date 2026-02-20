@@ -62,6 +62,9 @@ providers:
   groq:
     base_url: https://api.groq.com/openai/v1
     type: openai_compatible
+  openai:
+    base_url: https://api.openai.com
+    type: openai_compatible
 
 default_model: gpt-oss-20b
 
@@ -78,6 +81,19 @@ models:
       reasoning: true
       tools: true
       vision: false
+  
+  gpt-4o:
+    provider: openai
+    provider_model: gpt-4o
+    pricing:
+      input_micro: 250
+      output_micro: 1000
+    limits:
+      max_tokens: 8192
+    capabilities:
+      reasoning: true
+      tools: true
+      vision: true
 """
         MODELS_CONFIG_FILE.write_text(default_yaml)
 
@@ -92,10 +108,18 @@ models:
 
     env_file = AEX_DIR / ".env"
     if not env_file.exists():
-        console.print("[yellow]A provider API key is required to route requests.[/yellow]")
-        api_key = typer.prompt("Enter your Groq API key", hide_input=True)
-        env_file.write_text(f"# Provider API Keys\nGROQ_API_KEY={api_key}\n")
-        console.print(f"[green]Saved API key to {env_file}[/green]")
+        console.print("[yellow]Provider API keys are required to route requests.[/yellow]")
+        groq_key = typer.prompt("Enter your Groq API key (optional, press Enter to skip)", default="", hide_input=True)
+        openai_key = typer.prompt("Enter your OpenAI API key (optional, press Enter to skip)", default="", hide_input=True)
+        
+        env_content = "# Provider API Keys\n"
+        if groq_key: 
+            env_content += f"GROQ_API_KEY={groq_key}\n"
+        if openai_key:
+            env_content += f"OPENAI_API_KEY={openai_key}\n"
+            
+        env_file.write_text(env_content)
+        console.print(f"[green]Saved API keys to {env_file}[/green]")
 
 
 # ── Register submodule commands (import triggers decorator registration) ────

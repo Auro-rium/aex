@@ -1,27 +1,29 @@
 <p align="center">
-  <h1 align="center">AEX — AI Execution Kernel</h1>
+  <h1 align="center">AEX — Auto Execution Kernel</h1>
   <p align="center">
     Local-first governance layer for AI agent execution.<br>
-    Budget enforcement · Rate limiting · Capability policies · Audit trails · OpenAI-compatible proxy.
+    <em>Budget enforcement · Rate limiting · Capability policies · Audit trails · OpenAI-compatible proxy</em>
   </p>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Auro-rium/aex"><img src="https://img.shields.io/badge/version-1.2.0-blue" alt="Version"></a>
+  <a href="https://github.com/Auro-rium/aex"><img src="https://img.shields.io/badge/version-1.2.1-blue" alt="Version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-green" alt="Python 3.11+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="MIT License"></a>
-  <a href="https://github.com/Auro-rium/aex/issues"><img src="https://img.shields.io/badge/issues-welcome-orange" alt="Issues"></a>
 </p>
 
 ---
 
 ## What is AEX?
 
-AEX sits between your AI agents and LLM providers. Every API call passes through AEX, where it is **authenticated**, **budget-checked**, **rate-limited**, **policy-validated**, and **logged** — before being forwarded to the real provider.
+AEX is a lightweight **local proxy** that sits between your AI agents and LLM providers (like Groq, OpenAI). It ensures that every API call is **authenticated**, **budget-checked**, **rate-limited**, **policy-validated**, and **logged** — all before reaching the real provider.
 
-Your agents see a standard OpenAI-compatible API. They never know AEX is there.
+Because AEX acts as a standard OpenAI-compatible API, **your agents work with it out of the box** without knowing AEX is there!
 
-```
+<details>
+<summary><strong>Visualize the Architecture</strong></summary>
+
+```text
   Agent Frameworks (LangGraph, CrewAI, AutoGen, raw SDK)
           │
           │  OPENAI_BASE_URL=http://127.0.0.1:9000/v1
@@ -43,101 +45,110 @@ Your agents see a standard OpenAI-compatible API. They never know AEX is there.
     └─────────────────────┘
 ```
 
-## Install
+</details>
+
+## What Can You Do With AEX?
+
+AEX lets you completely govern AI agents running locally or in autonomous loops. Here's how:
+
+<details>
+<summary>💰 <strong>Set Hard Budgets (No Overspending)</strong></summary>
+Give an agent exactly $5.00 to complete a task. AEX uses integer micro-unit accounting, meaning absolute precision and no floating-point drift. When the budget is gone, the agent is cut off (HTTP `402 Payment Required`).
+</details>
+
+<details>
+<summary>⏱️ <strong>Apply Rate Limits (RPM)</strong></summary>
+Prevent runaway agent loops. Set an agent to a maximum of 30 Requests Per Minute (RPM); any more and they are cleanly blocked until the window rolls over.
+</details>
+
+<details>
+<summary>🛡️ <strong>Restrict Capabilities (Model Whitelists & Strict Mode)</strong></summary>
+Force an agent to only use `gpt-oss-20b` (e.g., Llama 3 on Groq). Disable streaming. Disable vision. Or enable **Strict Mode**, which validates every request token against their exact allowed scopes.
+</details>
+
+<details>
+<summary>🕵️ <strong>Audit Every Request</strong></summary>
+Every prompt, every tool call, every token chunk, and every denial is logged to the local SQLite database. Use `aex metrics` or `aex audit` to track burns and ledger integrity anytime.
+</details>
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# 1. Install
 pip install aex
-```
 
-Or install from source:
-
-```bash
-git clone https://github.com/Auro-rium/aex.git
-cd aex
-pip install -e .
-```
-
-## Quick Start
-
-```bash
-# 1. Initialize AEX (creates ~/.aex with config + database, and prompts for API key)
+# 2. Initialize (creates ~/.aex config and prompts for API keys)
 aex init
 
-# 2. Start the daemon
+# 3. Start the background proxy daemon
 aex daemon start
 
-# 3. Create an agent with $5 budget and 30 RPM limit
+# 4. Create an agent with a $5 budget and 30 RPM limit
 aex agent create my-agent 5.00 30
+# Copy the generated `Token:` output
 
-# 4. Use the token with any OpenAI-compatible SDK
+# 5. Use the token with your favorite framework!
 export OPENAI_BASE_URL=http://127.0.0.1:9000/v1
-export OPENAI_API_KEY=<token-from-step-3>
+export OPENAI_API_KEY=<token-from-step-4>
 ```
 
-That's it. Every call your agent makes is now governed.
+---
 
-## Framework Integration
+## 🛠️ Framework Integration
 
-AEX works with **any** framework that uses the OpenAI SDK protocol:
+AEX works instantly with **any** framework that supports the OpenAI SDK:
 
-| Framework | Integration |
-|-----------|------------|
-| **LangGraph** | Set `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
-| **CrewAI** | Set `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
-| **AutoGen** | Set `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
+| Framework | How to Integrate |
+|-----------|------------------|
+| **LangGraph / CrewAI / AutoGen** | Export `OPENAI_BASE_URL` + `OPENAI_API_KEY` |
 | **OpenAI SDK** | `openai.OpenAI(base_url=..., api_key=...)` |
-| **AEX Helper** | `from aex.integrations import get_openai_client` |
+| **AEX Python Helper** | `from aex.integrations import get_openai_client` |
 
-### Python Helper
+### Python Helper Example
 
 ```python
 from aex.integrations import get_openai_client
 
+# Automatically fetches the locally stored token for "my-agent"
 client = get_openai_client("my-agent")
+
 response = client.chat.completions.create(
     model="gpt-oss-20b",
-    messages=[{"role": "user", "content": "Hello"}]
+    messages=[{"role": "user", "content": "Hello AEX!"}]
 )
+print(response.choices[0].message.content)
 ```
 
-### Run a script as an agent
+### Run a Script as an Agent
 
 ```bash
 aex run --agent my-agent python my_script.py
 ```
+*(This command automatically injects `OPENAI_BASE_URL` and `OPENAI_API_KEY` into `my_script.py`'s environment variables.)*
 
-This injects `OPENAI_BASE_URL` and `OPENAI_API_KEY` automatically.
+---
 
-## Features
+## 💻 CLI Operations Reference
 
-| Feature | Description |
-|---------|-------------|
-| **Budget Enforcement** | Per-agent USD budgets, integer micro-unit accounting (no float drift) |
-| **Rate Limiting** | Per-agent RPM caps with sliding window |
-| **Capability Policies** | Model whitelist, tool/streaming/vision toggles, strict mode |
-| **Token Security** | SHA-256 hashed storage, entropy validation, optional TTL |
-| **Token Scopes** | `execution` or `read-only` |
-| **Passthrough Mode** | Agents bring own provider keys — governance still enforced |
-| **Streaming Support** | Full SSE relay with post-stream cost settlement |
-| **Audit Trail** | Every request, denial, and policy violation logged |
-| **Dashboard** | Live metrics at `http://127.0.0.1:9000/dashboard` |
-| **Invariant Verification** | `aex audit` formally verifies ledger integrity |
-| **Stress Tested** | 10/10 infra assault certification (concurrency, budget collapse, rate limits) |
+Expand the sections below to see all the powerful management tools.
 
-## CLI Reference
-
-### Daemon
+<details>
+<summary><strong>Daemon Controls</strong></summary>
 
 ```bash
 aex daemon start [--port 9000]   # Start the proxy daemon
 aex daemon stop                  # Stop the daemon
 aex daemon status                # Check if running
 ```
+</details>
 
-### Agents
+<details>
+<summary><strong>Agent Management</strong></summary>
 
 ```bash
-# Create with full governance
+# Create with strict governance rules
 aex agent create atlas 10.00 30 \
   --allowed-models "gpt-oss-20b" \
   --no-streaming \
@@ -145,32 +156,34 @@ aex agent create atlas 10.00 30 \
   --ttl 24 \
   --scope execution
 
-# Passthrough mode (agent provides own API key)
+# Passthrough Mode (Agent uses its own OpenAI API key, but governance is still applied)
 aex agent create proxy-agent 5.00 30 --allow-passthrough
 
-# Management
-aex agent inspect atlas          # Full details + token
-aex agent list                   # All agents table
-aex agent list --verbose         # Show micro-units
-aex agent delete atlas           # Delete + kill process
-aex agent rotate-token atlas     # New token, old invalidated
+# Manage existing agents
+aex agent inspect atlas          # View budget, limits, and token
+aex agent list                   # View all agents
+aex agent delete atlas           # Delete agent and active token
+aex agent rotate-token atlas     # Invalidate old token, generate new
 ```
+</details>
 
-### Operations
+<details>
+<summary><strong>Monitoring & Auditing</strong></summary>
 
 ```bash
+aex metrics                      # Live burn rates and spending metrics
+aex status                       # Enforcement and daemon summaries
+aex audit                        # Formally verify the database ledger for leaks
 aex doctor                       # Environment health check
-aex doctor --compat --token <t>  # Protocol fidelity tests
-aex status                       # Enforcement summary
-aex audit                        # Formal invariant verification
-aex metrics                      # Per-agent financials + burn rate
-aex models reload                # Hot-reload model config
-aex version                      # Show version
 ```
+</details>
 
-## Configuration
+---
 
-AEX reads model definitions from `~/.aex/config/models.yaml`:
+## ⚙️ Configuration & Models
+
+AEX manages model mappings inside `~/.aex/config/models.yaml`. 
+You define "AEX models" in the config, and map them to real provider models and prices (in micro-USD: $1 = 1,000,000µ).
 
 ```yaml
 version: 1
@@ -194,40 +207,9 @@ models:
     capabilities:
       reasoning: true
       tools: true
-      vision: false
 ```
 
-Provider API keys are securely persisted in `~/.aex/.env` after being entered interactively during `aex init`.
-
-If you need to update them manually later:
-
-```bash
-GROQ_API_KEY=your_groq_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-```
-
-## Security Model
-
-| Layer | Mechanism |
-|-------|-----------|
-| Token Storage | SHA-256 hash (raw token never stored for new agents) |
-| Token Entropy | Minimum 128-bit (32 hex chars) |
-| Token Expiry | Optional TTL in hours (supports fractional: `--ttl 0.5`) |
-| Token Scope | `execution` or `read-only` |
-| Provider Keys | Daemon-only — never exposed to agents |
-| Passthrough | Opt-in per agent, governance still enforced |
-| Budget Integrity | `CHECK` constraints + atomic transactions + invariant audits |
-
-## Accounting Guarantees
-
-AEX uses **integer micro-units** (1 USD = 1,000,000 µ) with SQLite `CHECK` constraints to provide:
-
-- **No negative balances** — `spent_micro >= 0` enforced at database level
-- **No overspends** — `spent_micro <= budget_micro` enforced at database level
-- **Ledger integrity** — `SUM(events.cost_micro)` always equals `agents.spent_micro`
-- **Atomic transactions** — Budget mutations and event logging happen in the same `BEGIN IMMEDIATE` transaction
-
-Verify anytime with `aex audit`.
+*Update provider keys directly in `~/.aex/.env` if you missed them during `aex init`.*
 
 ## License
 
