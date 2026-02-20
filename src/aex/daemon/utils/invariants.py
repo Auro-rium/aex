@@ -74,10 +74,12 @@ def check_no_orphaned_reservations(conn) -> InvariantResult:
 
 
 def check_event_log_integrity(conn) -> InvariantResult:
-    """INV-4: Every USAGE_RECORDED event should have a positive cost_micro."""
+    """INV-4: Every usage event should have a positive cost_micro."""
     cursor = conn.cursor()
     rows = cursor.execute(
-        "SELECT id, agent, cost_micro FROM events WHERE action = 'USAGE_RECORDED' AND (cost_micro IS NULL OR cost_micro < 0)"
+        "SELECT id, agent, cost_micro FROM events "
+        "WHERE action IN ('usage.commit', 'USAGE_RECORDED') "
+        "AND (cost_micro IS NULL OR cost_micro < 0)"
     ).fetchall()
 
     if rows:
@@ -91,13 +93,13 @@ def check_event_log_integrity(conn) -> InvariantResult:
 
 
 def check_spent_matches_events(conn) -> InvariantResult:
-    """INV-5: Sum of USAGE_RECORDED events per agent should match spent_micro."""
+    """INV-5: Sum of usage events per agent should match spent_micro."""
     cursor = conn.cursor()
     
     # Get per-agent event sums
     event_sums = cursor.execute(
         "SELECT agent, SUM(cost_micro) as total_cost FROM events "
-        "WHERE action = 'USAGE_RECORDED' GROUP BY agent"
+        "WHERE action IN ('usage.commit', 'USAGE_RECORDED') GROUP BY agent"
     ).fetchall()
     
     event_map = {r["agent"]: r["total_cost"] for r in event_sums}

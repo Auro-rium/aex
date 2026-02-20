@@ -13,8 +13,12 @@ def get_metrics() -> Dict[str, Any]:
         active_processes = cursor.execute("SELECT COUNT(*) FROM pids").fetchone()[0]
         
         # Event stats
-        total_requests = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'USAGE_RECORDED'").fetchone()[0]
-        total_denied_budget = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'DENIED_BUDGET'").fetchone()[0]
+        total_requests = cursor.execute(
+            "SELECT COUNT(*) FROM events WHERE action IN ('usage.commit', 'USAGE_RECORDED')"
+        ).fetchone()[0]
+        total_denied_budget = cursor.execute(
+            "SELECT COUNT(*) FROM events WHERE action IN ('budget.deny', 'DENIED_BUDGET')"
+        ).fetchone()[0]
         total_denied_rate_limit = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'RATE_LIMIT'").fetchone()[0]
         total_policy_violations = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'POLICY_VIOLATION'").fetchone()[0]
         
@@ -22,7 +26,7 @@ def get_metrics() -> Dict[str, Any]:
         top_models = []
         model_rows = cursor.execute(
             "SELECT metadata, COUNT(*) as cnt FROM events "
-            "WHERE action = 'USAGE_RECORDED' AND metadata IS NOT NULL "
+            "WHERE action IN ('usage.commit', 'USAGE_RECORDED') AND metadata IS NOT NULL "
             "GROUP BY metadata ORDER BY cnt DESC LIMIT 5"
         ).fetchall()
         for row in model_rows:
@@ -35,7 +39,7 @@ def get_metrics() -> Dict[str, Any]:
             hour_start = now - timedelta(hours=24 - i)
             hour_end = now - timedelta(hours=23 - i)
             count = cursor.execute(
-                "SELECT COUNT(*) FROM events WHERE action = 'USAGE_RECORDED' "
+                "SELECT COUNT(*) FROM events WHERE action IN ('usage.commit', 'USAGE_RECORDED') "
                 "AND timestamp >= ? AND timestamp < ?",
                 (hour_start.isoformat(), hour_end.isoformat())
             ).fetchone()[0]
