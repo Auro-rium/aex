@@ -34,7 +34,7 @@ All before a single token reaches the provider.
   Agent Frameworks (LangGraph, CrewAI, AutoGen, SDK)
           │
           │  OPENAI_BASE_URL=http://127.0.0.1:9000/v1
-          │  OPENAI_API_KEY=<agent-token>
+          │  OPENAI_API_KEY=<agent-token>  (AEX token, not provider key)
           ▼
     ┌────────────────────────────┐
     │         AEX Kernel         │
@@ -51,6 +51,31 @@ All before a single token reaches the provider.
 
 Northbound: OpenAI-compatible
 Southbound: Multi-provider routing
+
+---
+
+# Provider Key Ownership
+
+AEX supports two key ownership modes:
+
+* Daemon-owned provider keys (default):
+  operator sets provider env vars on AEX host (for example `GROQ_API_KEY`).
+* Agent-owned provider keys (passthrough):
+  agent sends its own provider key per request via `x-aex-provider-key`.
+* Fallback behavior:
+  if `x-aex-provider-key` is missing, AEX uses daemon provider env key (if present).
+
+If you do **not** want users consuming your Groq key:
+
+* Do not share host env/files.
+* Create agents with `--allow-passthrough`.
+* Require clients to send their own provider key header.
+
+Strict BYOK mode (recommended for shared environments):
+
+* Do **not** set daemon provider key env vars for that provider (for example `GROQ_API_KEY`).
+* Only accept requests with `x-aex-provider-key`.
+* Keep per-agent controls (`--allowed-models`, budgets, RPM) in place.
 
 ---
 
@@ -166,6 +191,34 @@ models:
 
 Frameworks remain unchanged.
 Routing handled internally.
+
+---
+
+## User-Owned Key (Passthrough) Example
+
+Create an agent that must use its own provider key:
+
+```bash
+aex agent create my-agent 5.00 30 --allow-passthrough
+```
+
+Call AEX with:
+
+* `Authorization: Bearer <AEX_AGENT_TOKEN>`
+* `x-aex-provider-key: <USER_PROVIDER_KEY>`
+
+Example:
+
+```bash
+curl http://127.0.0.1:9000/v1/chat/completions \
+  -H "Authorization: Bearer <AEX_AGENT_TOKEN>" \
+  -H "x-aex-provider-key: <USER_LLM_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "gpt-oss-20b",
+        "messages": [{"role":"user","content":"hello"}]
+      }'
+```
 
 ---
 

@@ -7,6 +7,12 @@ __pycache__/
 dist/
 build/
 *.whl
+*.pyo
+*.pyd
+*.pydist
+*.pypkg
+*.pyz
+*.pyzapp
 
 # Virtual environments
 aex_env/
@@ -20,6 +26,10 @@ env/
 *.swp
 *.swo
 .gemini/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+*.code-snippets
 
 # AEX runtime (user-local, never in repo)
 .env
@@ -33,3 +43,19 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
+playwright-report/
+playwright-trace.zip
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Editor backups
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
