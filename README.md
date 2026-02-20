@@ -1,216 +1,313 @@
-<p align="center">
-  <h1 align="center">AEX — Auto Execution Kernel</h1>
-  <p align="center">
-    Local-first governance layer for AI agent execution.<br>
-    <em>Budget enforcement · Rate limiting · Capability policies · Audit trails · OpenAI-compatible proxy</em>
-  </p>
-</p>
+# AEX — Auto Execution Kernel
 
-<p align="center">
-  <a href="https://github.com/Auro-rium/aex"><img src="https://img.shields.io/badge/version-1.2.1-blue" alt="Version"></a>
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-green" alt="Python 3.11+"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="MIT License"></a>
-</p>
+Local-first governance layer for AI agent execution.
+**Budget enforcement · Token governance · Capability policies · Multi-provider routing · Deterministic audit ledger**
 
 ---
 
-## What is AEX?
+## Why AEX Exists
 
-AEX is a lightweight **local proxy** that sits between your AI agents and LLM providers (like Groq, OpenAI). It ensures that every API call is **authenticated**, **budget-checked**, **rate-limited**, **policy-validated**, and **logged** — all before reaching the real provider.
+AI agents do not stop on their own.
 
-Because AEX acts as a standard OpenAI-compatible API, **your agents work with it out of the box** without knowing AEX is there!
+They loop.
+They retry.
+They escalate.
+They overspend.
 
-<details>
-<summary><strong>Visualize the Architecture</strong></summary>
+AEX is the boundary that stops them.
 
-```text
-  Agent Frameworks (LangGraph, CrewAI, AutoGen, raw SDK)
+It sits between your agents and LLM providers and enforces:
+
+* Hard spending limits
+* Token rate ceilings
+* Model restrictions
+* Capability policies
+* Audit logging with ledger integrity
+
+All before a single token reaches the provider.
+
+---
+
+## Architecture Overview
+
+```
+  Agent Frameworks (LangGraph, CrewAI, AutoGen, SDK)
           │
           │  OPENAI_BASE_URL=http://127.0.0.1:9000/v1
           │  OPENAI_API_KEY=<agent-token>
           ▼
-    ┌─────────────────────┐
-    │     AEX Daemon      │
-    │                     │
-    │  ✦ Auth (SHA-256)   │
-    │  ✦ Policy Engine    │
-    │  ✦ Budget Enforcer  │
-    │  ✦ Rate Limiter     │
-    │  ✦ Audit Logger     │
-    └──────────┬──────────┘
-               ▼
-    ┌─────────────────────┐
-    │  LLM Providers      │
-    │  (Groq · OpenAI)    │
-    └─────────────────────┘
+    ┌────────────────────────────┐
+    │         AEX Kernel         │
+    │                            │
+    │  ✓ Auth & Identity         │
+    │  ✓ Budget Reservation      │
+    │  ✓ Token Rate Limiting     │
+    │  ✓ Model Policy Checks     │
+    │  ✓ Ledger Commit (Atomic)  │
+    └──────────────┬─────────────┘
+                   ▼
+         LLM Providers (Groq, OpenAI, etc.)
 ```
 
-</details>
-
-## What Can You Do With AEX?
-
-AEX lets you completely govern AI agents running locally or in autonomous loops. Here's how:
-
-<details>
-<summary>💰 <strong>Set Hard Budgets (No Overspending)</strong></summary>
-Give an agent exactly $5.00 to complete a task. AEX uses integer micro-unit accounting, meaning absolute precision and no floating-point drift. When the budget is gone, the agent is cut off (HTTP `402 Payment Required`).
-</details>
-
-<details>
-<summary>⏱️ <strong>Apply Rate Limits (RPM)</strong></summary>
-Prevent runaway agent loops. Set an agent to a maximum of 30 Requests Per Minute (RPM); any more and they are cleanly blocked until the window rolls over.
-</details>
-
-<details>
-<summary>🛡️ <strong>Restrict Capabilities (Model Whitelists & Strict Mode)</strong></summary>
-Force an agent to only use `gpt-oss-20b` (e.g., Llama 3 on Groq). Disable streaming. Disable vision. Or enable **Strict Mode**, which validates every request token against their exact allowed scopes.
-</details>
-
-<details>
-<summary>🕵️ <strong>Audit Every Request</strong></summary>
-Every prompt, every tool call, every token chunk, and every denial is logged to the local SQLite database. Use `aex metrics` or `aex audit` to track burns and ledger integrity anytime.
-</details>
+Northbound: OpenAI-compatible
+Southbound: Multi-provider routing
 
 ---
 
-## 🚀 Quick Start
+# Interactive Enforcement Scenarios
+
+## 1. Hard Budget Cutoff
+
+Create an agent with $0.01:
 
 ```bash
-# 1. Install
-pip install aex
-
-# 2. Initialize (creates ~/.aex config and prompts for API keys)
-aex init
-
-# 3. Start the background proxy daemon
-aex daemon start
-
-# 4. Create an agent with a $5 budget and 30 RPM limit
-aex agent create my-agent 5.00 30
-# Copy the generated `Token:` output
-
-# 5. Use the token with your favorite framework!
-export OPENAI_BASE_URL=http://127.0.0.1:9000/v1
-export OPENAI_API_KEY=<token-from-step-4>
+aex agent create test-agent 0.01 60
 ```
+
+Run a script that loops requests.
+
+When budget hits zero:
+
+```json
+HTTP 402
+{
+  "detail": "Insufficient budget"
+}
+```
+
+Execution stops immediately.
 
 ---
 
-## 🛠️ Framework Integration
+## 2. Token Per Minute (TPM) Limit
 
-AEX works instantly with **any** framework that supports the OpenAI SDK:
-
-| Framework | How to Integrate |
-|-----------|------------------|
-| **LangGraph / CrewAI / AutoGen** | Export `OPENAI_BASE_URL` + `OPENAI_API_KEY` |
-| **OpenAI SDK** | `openai.OpenAI(base_url=..., api_key=...)` |
-| **AEX Python Helper** | `from aex.integrations import get_openai_client` |
-
-### Python Helper Example
-
-```python
-from aex.integrations import get_openai_client
-
-# Automatically fetches the locally stored token for "my-agent"
-client = get_openai_client("my-agent")
-
-response = client.chat.completions.create(
-    model="gpt-oss-20b",
-    messages=[{"role": "user", "content": "Hello AEX!"}]
-)
-print(response.choices[0].message.content)
-```
-
-### Run a Script as an Agent
-
-```bash
-aex run --agent my-agent python my_script.py
-```
-*(This command automatically injects `OPENAI_BASE_URL` and `OPENAI_API_KEY` into `my_script.py`'s environment variables.)*
-
----
-
-## 💻 CLI Operations Reference
-
-Expand the sections below to see all the powerful management tools.
-
-<details>
-<summary><strong>Daemon Controls</strong></summary>
-
-```bash
-aex daemon start [--port 9000]   # Start the proxy daemon
-aex daemon stop                  # Stop the daemon
-aex daemon status                # Check if running
-```
-</details>
-
-<details>
-<summary><strong>Agent Management</strong></summary>
-
-```bash
-# Create with strict governance rules
-aex agent create atlas 10.00 30 \
-  --allowed-models "gpt-oss-20b" \
-  --no-streaming \
-  --strict \
-  --ttl 24 \
-  --scope execution
-
-# Passthrough Mode (Agent uses its own OpenAI API key, but governance is still applied)
-aex agent create proxy-agent 5.00 30 --allow-passthrough
-
-# Manage existing agents
-aex agent inspect atlas          # View budget, limits, and token
-aex agent list                   # View all agents
-aex agent delete atlas           # Delete agent and active token
-aex agent rotate-token atlas     # Invalidate old token, generate new
-```
-</details>
-
-<details>
-<summary><strong>Monitoring & Auditing</strong></summary>
-
-```bash
-aex metrics                      # Live burn rates and spending metrics
-aex status                       # Enforcement and daemon summaries
-aex audit                        # Formally verify the database ledger for leaks
-aex doctor                       # Environment health check
-```
-</details>
-
----
-
-## ⚙️ Configuration & Models
-
-AEX manages model mappings inside `~/.aex/config/models.yaml`. 
-You define "AEX models" in the config, and map them to real provider models and prices (in micro-USD: $1 = 1,000,000µ).
+Configure in models.yaml:
 
 ```yaml
-version: 1
+limits:
+  max_tokens_per_minute: 1000
+```
 
+Send rapid requests.
+
+When exceeded:
+
+```json
+HTTP 429
+{
+  "detail": "TPM Rate limit exceeded"
+}
+```
+
+Throttle occurs before provider.
+
+---
+
+## 3. Model Whitelist Enforcement
+
+Create an agent restricted to one model:
+
+```bash
+aex agent create atlas 10.00 30 --allowed-models "gpt-oss-20b"
+```
+
+If agent attempts another model:
+
+```json
+HTTP 403
+{
+  "detail": "Model not allowed"
+}
+```
+
+Policy enforced pre-forward.
+
+---
+
+## 4. Live Budget Severing
+
+While agent runs:
+
+```sql
+UPDATE agents SET budget_micro = spent_micro WHERE name='atlas';
+```
+
+Next generation attempt:
+
+```json
+HTTP 402
+```
+
+Live governance without restarting daemon.
+
+---
+
+# Multi-Provider Support
+
+Define providers in `~/.aex/config/models.yaml`:
+
+```yaml
 providers:
   groq:
     base_url: https://api.groq.com/openai/v1
-    type: openai_compatible
-
-default_model: gpt-oss-20b
+  openai:
+    base_url: https://api.openai.com/v1
+  ollama:
+    base_url: http://localhost:11434/v1
 
 models:
   gpt-oss-20b:
     provider: groq
-    provider_model: llama-3.1-8b-instant
-    pricing:
-      input_micro: 50    # micro-USD per token
-      output_micro: 100
-    limits:
-      max_tokens: 8192
-    capabilities:
-      reasoning: true
-      tools: true
+  gpt-4:
+    provider: openai
+  llama-local:
+    provider: ollama
 ```
 
-*Update provider keys directly in `~/.aex/.env` if you missed them during `aex init`.*
+Frameworks remain unchanged.
+Routing handled internally.
 
-## License
+---
 
-[MIT](LICENSE)
+# Quick Start
+
+```bash
+# Install
+pip install aex
+
+# Initialize configuration (~/.aex)
+aex init
+
+# Start daemon
+aex daemon start
+
+# Create agent with $5 budget + 30 RPM
+aex agent create my-agent 5.00 30
+
+# Export environment variables
+export OPENAI_BASE_URL=http://127.0.0.1:9000/v1
+export OPENAI_API_KEY=<token-from-create>
+```
+
+---
+
+# Framework Integration
+
+Works with any OpenAI-compatible client:
+
+* LangGraph
+* CrewAI
+* AutoGen
+* smolagents
+* Raw SDK
+* curl
+
+Example (Python SDK):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:9000/v1",
+    api_key="<AEX_TOKEN>"
+)
+
+resp = client.chat.completions.create(
+    model="gpt-oss-20b",
+    messages=[{"role": "user", "content": "Hello AEX"}]
+)
+
+print(resp.choices[0].message.content)
+```
+
+---
+
+# CLI Management
+
+Start daemon:
+
+```bash
+aex daemon start
+```
+
+Check status:
+
+```bash
+aex status
+```
+
+View live metrics:
+
+```bash
+aex metrics
+```
+
+Verify ledger integrity:
+
+```bash
+aex audit
+```
+
+Rotate agent token:
+
+```bash
+aex agent rotate-token my-agent
+```
+
+---
+
+# Financial Integrity Guarantee
+
+AEX enforces invariant:
+
+```
+agents.spent_micro ==
+SUM(events.cost_micro WHERE action='usage.commit')
+```
+
+Verified under:
+
+* Multi-agent concurrency
+* Token expiry
+* Rate bursts
+* Budget exhaustion
+* Dynamic severing
+* Provider 429
+
+Run:
+
+```bash
+aex audit
+```
+
+---
+
+# What AEX Is Not
+
+* Not an agent framework
+* Not a SaaS dashboard
+* Not vendor locked
+* Not a cost-optimizer
+
+It is a local execution governance kernel.
+
+---
+
+# Roadmap
+
+* Global concurrency caps
+* Session token ceilings
+* Capability-level tool governance
+* Crash recovery hardening
+* Multi-provider fallback routing
+
+---
+
+If you run autonomous AI agents and care about:
+
+* Not overspending
+* Not losing control
+* Not cross-contaminating budgets
+* Not relying on external dashboards
+
+AEX is the boundary layer.
