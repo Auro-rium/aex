@@ -304,8 +304,12 @@ def show_status():
             total_spent = cursor.execute("SELECT SUM(spent_micro) FROM agents").fetchone()[0] or 0
             total_reserved = cursor.execute("SELECT SUM(reserved_micro) FROM agents").fetchone()[0] or 0
 
-            total_requests = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'USAGE_RECORDED'").fetchone()[0]
-            budget_denials = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'DENIED_BUDGET'").fetchone()[0]
+            total_requests = cursor.execute(
+                "SELECT COUNT(*) FROM events WHERE action IN ('usage.commit', 'USAGE_RECORDED')"
+            ).fetchone()[0]
+            budget_denials = cursor.execute(
+                "SELECT COUNT(*) FROM events WHERE action IN ('budget.deny', 'DENIED_BUDGET')"
+            ).fetchone()[0]
             rate_denials = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'RATE_LIMIT'").fetchone()[0]
             policy_violations = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'POLICY_VIOLATION'").fetchone()[0]
             kills = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'PROCESS_KILLED'").fetchone()[0]
