@@ -17,10 +17,12 @@ console = Console()
 daemon_app = typer.Typer()
 agent_app = typer.Typer()
 models_app = typer.Typer()
+plugin_app = typer.Typer()
 
 app.add_typer(daemon_app, name="daemon", help="Manage the AEX daemon process")
 app.add_typer(agent_app, name="agent", help="Manage AI agents and budgets")
 app.add_typer(models_app, name="models", help="Manage model configuration")
+app.add_typer(plugin_app, name="plugin", help="Manage sandboxed tool plugins")
 
 # ── Path constants ──────────────────────────────────────────────────────────
 
@@ -127,3 +129,5 @@ models:
 from . import daemon_cmds   # noqa: E402, F401
 from . import agent_cmds    # noqa: E402, F401
 from . import ops_cmds      # noqa: E402, F401
+from . import plugin_cmds   # noqa: E402, F401
+from . import replay_cmds   # noqa: E402, F401

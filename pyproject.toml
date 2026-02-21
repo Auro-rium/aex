@@ -1,10 +1,10 @@
 [project]
 name = "aex"
-version = "1.2.1"
-description = "AEX — Auto Execution Kernel. Local-first governance layer for AI agents with budget enforcement, rate limiting, capability policies, and audit trails."
+version = "2.0.0"
+description = "AEX v2.0 — local-first AI execution governance kernel with deterministic accounting, idempotent admission, and tamper-evident ledger replay."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = { text = "Apache-2.0" }
 authors = [
   { name = "Auro-rium", email = "auroriumnexus@gmail.com" }
 ]
@@ -12,6 +12,7 @@ keywords = ["ai", "llm", "governance", "budget", "proxy", "openai", "agents", "r
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -35,7 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+dev = ["langgraph>=0.2"]
 
 [project.urls]
 Homepage = "https://github.com/Auro-rium/aex"
@@ -54,8 +55,3 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.pytest.ini_options]
-markers = [
-    "integration: marks tests requiring running daemon + real API key",
-]

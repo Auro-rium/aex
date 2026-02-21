@@ -1,18 +1,15 @@
-# Python
+# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Packaging/build artifacts
+build/
+dist/
 *.egg-info/
 *.egg
-dist/
-build/
 *.whl
-*.pyo
-*.pyd
-*.pydist
-*.pypkg
-*.pyz
-*.pyzapp
+*.tar.gz
 
 # Virtual environments
 aex_env/
@@ -20,42 +17,38 @@ venv/
 .venv/
 env/
 
-# IDE
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Runtime/local state
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE/editor
 .vscode/
 .idea/
-*.swp
-*.swo
-.gemini/
 *.sublime-workspace
 *.sublime-project
 *.code-workspace
 *.code-snippets
+*.swp
+*.swo
+*~
 
-# AEX runtime (user-local, never in repo)
-.env
-*.db
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing
-.pytest_cache/
-htmlcov/
-.coverage
-playwright-report/
-playwright-trace.zip
-
-# Logs and temporary files
+# Logs/temp
 *.log
 *.tmp
 *.bak
 *.orig
 *.rej
 
-# Editor backups
-*~
-*.swp
-*.swo
-*.bak
-*.tmp
+# OS
+.DS_Store
+Thumbs.db
