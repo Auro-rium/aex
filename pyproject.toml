@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-  { name = "Auro Rium", email = "auroriumnexus@gmail.com" }
+  { name = "Auro-rium", email = "auroriumnexus@gmail.com" }
 ]
 keywords = ["ai", "llm", "governance", "budget", "proxy", "openai", "agents", "rate-limiting"]
 classifiers = [

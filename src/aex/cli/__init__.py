@@ -92,8 +92,10 @@ models:
 
     env_file = AEX_DIR / ".env"
     if not env_file.exists():
-        env_file.write_text("# Provider API Keys\nGROQ_API_KEY=\n")
-        console.print(f"[yellow]Set your provider API key in {env_file}[/yellow]")
+        console.print("[yellow]A provider API key is required to route requests.[/yellow]")
+        api_key = typer.prompt("Enter your Groq API key", hide_input=True)
+        env_file.write_text(f"# Provider API Keys\nGROQ_API_KEY={api_key}\n")
+        console.print(f"[green]Saved API key to {env_file}[/green]")
 
 
 # ── Register submodule commands (import triggers decorator registration) ────
