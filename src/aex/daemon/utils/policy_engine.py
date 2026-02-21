@@ -70,11 +70,12 @@ def validate_request(
     if not agent_caps.get("allow_vision", 0):
         messages = payload.get("messages", [])
         for msg in messages:
-            content = msg.get("content")
-            if isinstance(content, list):
-                for part in content:
-                    if isinstance(part, dict) and part.get("type") == "image_url":
-                        return False, "Vision (image inputs) is disabled for this agent"
+            if isinstance(msg, dict):
+                content = msg.get("content")
+                if isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "image_url":
+                            return False, "Vision (image inputs) is disabled for this agent"
 
     # --- Max input tokens ---
     max_input = agent_caps.get("max_input_tokens")
@@ -87,9 +88,19 @@ def validate_request(
     # --- Max output tokens ---
     max_output = agent_caps.get("max_output_tokens")
     if max_output is not None:
-        req_max = payload.get("max_tokens")
-        if req_max and int(req_max) > max_output:
-            return False, f"Requested max_tokens ({req_max}) exceeds agent limit ({max_output})"
+        req_max_out = payload.get("max_tokens")
+        if req_max_out and int(req_max_out) > max_output:
+            return False, f"Requested max_tokens ({req_max_out}) exceeds agent limit ({max_output})"
+
+    # --- Max tokens per request (Total: Input + Output) ---
+    max_total = agent_caps.get("max_tokens_per_request")
+    if max_total is not None:
+        input_text = "".join(str(m.get("content", "")) for m in payload.get("messages", []))
+        est_input_tokens = len(input_text) // 4
+        req_out = payload.get("max_tokens", 0)  # If not provided, proxy sets it later to model max, but we check what we can here
+        est_total = est_input_tokens + int(req_out)
+        if est_total > max_total:
+            return False, f"Estimated total tokens ({est_total}) exceeds agent per-request limit ({max_total})"
 
     # --- Strict mode ---
     if agent_caps.get("strict_mode", 0):

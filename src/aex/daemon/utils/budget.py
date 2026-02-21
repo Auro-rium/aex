@@ -42,10 +42,10 @@ def reserve_budget(agent: str, estimated_cost_micro: int) -> bool:
             logger.error("Database error during reservation", error=str(e), agent=agent)
             raise HTTPException(status_code=500, detail="Internal accounting error")
 
-def commit_usage(agent: str, estimated_cost_micro: int, actual_cost_micro: int):
+def commit_usage(agent: str, estimated_cost_micro: int, actual_cost_micro: int, prompt_tokens: int = 0, completion_tokens: int = 0):
     """
     Commits actual usage and releases reservation.
-    Atomic: Updates spent/reserved and inserts event same transaction.
+    Atomic: Updates spent/reserved, token counts, and inserts event same transaction.
     Invariant: usage.commit event MUST equal spent_micro delta.
     """
     with get_db_connection() as conn:
@@ -58,15 +58,24 @@ def commit_usage(agent: str, estimated_cost_micro: int, actual_cost_micro: int):
                 UPDATE agents 
                 SET reserved_micro = MAX(0, reserved_micro - ?),
                     spent_micro = spent_micro + ?,
+                    tokens_used_prompt = tokens_used_prompt + ?,
+                    tokens_used_completion = tokens_used_completion + ?,
                     last_activity = CURRENT_TIMESTAMP
                 WHERE name = ?
-            """, (estimated_cost_micro, actual_cost_micro, agent))
+            """, (estimated_cost_micro, actual_cost_micro, prompt_tokens, completion_tokens, agent))
             
-            # 2. Log Event (Source of Truth)
+            # 2. Update Rate Window Token Tracking
+            # We add tokens to the CURRENT window (started at proxy ingress)
+            # If the window rolled over during the request, rate_limit.py will reset it on next ingress.
+            total_tokens = prompt_tokens + completion_tokens
+            if total_tokens > 0:
+                 cursor.execute("UPDATE rate_windows SET tokens_count = tokens_count + ? WHERE agent = ?", (total_tokens, agent))
+
+            # 3. Log Event (Source of Truth)
             cursor.execute("INSERT INTO events (agent, action, cost_micro) VALUES (?, ?, ?)",
                            (agent, "usage.commit", actual_cost_micro))
                            
-            # 3. Invariant Check (Post-Mutation)
+            # 4. Invariant Check (Post-Mutation)
             row = cursor.execute("SELECT budget_micro, spent_micro FROM agents WHERE name = ?", (agent,)).fetchone()
             if row and row["spent_micro"] > row["budget_micro"]:
                 # We allow the commit to finish (ledger integrity > budget enforcement at this stage)

@@ -15,34 +15,42 @@ def check_rate_limit(agent: str):
         cursor.execute("BEGIN IMMEDIATE")
         
         # Get Limit
-        agent_row = cursor.execute("SELECT rpm_limit FROM agents WHERE name = ?", (agent,)).fetchone()
+        agent_row = cursor.execute("SELECT rpm_limit, max_tokens_per_minute FROM agents WHERE name = ?", (agent,)).fetchone()
         if not agent_row:
             conn.rollback()
             raise HTTPException(status_code=404, detail="Agent not found")
             
-        limit = agent_row["rpm_limit"]
+        rpm_limit = agent_row["rpm_limit"]
+        tpm_limit = agent_row["max_tokens_per_minute"]
         
         # Get Current Window
-        window_row = cursor.execute("SELECT window_start, request_count FROM rate_windows WHERE agent = ?", (agent,)).fetchone()
+        window_row = cursor.execute("SELECT window_start, request_count, tokens_count FROM rate_windows WHERE agent = ?", (agent,)).fetchone()
         
         now = datetime.utcnow()
         if window_row:
             window_start = datetime.fromisoformat(window_row["window_start"])
             if now - window_start > timedelta(minutes=1):
                 # Window expired, reset
-                cursor.execute("UPDATE rate_windows SET window_start = ?, request_count = 1 WHERE agent = ?", (now.isoformat(), agent))
+                cursor.execute("UPDATE rate_windows SET window_start = ?, request_count = 1, tokens_count = 0 WHERE agent = ?", (now.isoformat(), agent))
             else:
                 # Within window
-                if window_row["request_count"] >= limit:
+                if window_row["request_count"] >= rpm_limit:
                     cursor.execute("INSERT INTO events (agent, action, cost_micro, metadata) VALUES (?, ?, ?, ?)",
-                                   (agent, "RATE_LIMIT", 0, f"Limit: {limit}"))
+                                   (agent, "RATE_LIMIT", 0, f"RPM Limit: {rpm_limit}"))
                     conn.commit()
-                    logger.warning("Rate limit exceeded", agent=agent, limit=limit)
-                    raise HTTPException(status_code=429, detail="Rate limit exceeded")
+                    logger.warning("RPM rate limit exceeded", agent=agent, limit=rpm_limit)
+                    raise HTTPException(status_code=429, detail="RPM Rate limit exceeded")
+                
+                if tpm_limit is not None and window_row["tokens_count"] >= tpm_limit:
+                    cursor.execute("INSERT INTO events (agent, action, cost_micro, metadata) VALUES (?, ?, ?, ?)",
+                                   (agent, "RATE_LIMIT", 0, f"TPM Limit: {tpm_limit}"))
+                    conn.commit()
+                    logger.warning("TPM rate limit exceeded", agent=agent, limit=tpm_limit)
+                    raise HTTPException(status_code=429, detail="TPM Rate limit exceeded")
                 
                 cursor.execute("UPDATE rate_windows SET request_count = request_count + 1 WHERE agent = ?", (agent,))
         else:
              # First request
-             cursor.execute("INSERT INTO rate_windows (agent, window_start, request_count) VALUES (?, ?, 1)", (agent, now.isoformat()))
+             cursor.execute("INSERT INTO rate_windows (agent, window_start, request_count, tokens_count) VALUES (?, ?, 1, 0)", (agent, now.isoformat()))
              
         conn.commit()

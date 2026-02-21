@@ -95,7 +95,7 @@ async def handle_streaming(
                     prompt_tokens_count * model_config.pricing.input_micro
                     + completion_tokens_count * model_config.pricing.output_micro
                 )
-                commit_usage(agent, estimated_cost_micro, actual_cost_micro)
+                commit_usage(agent, estimated_cost_micro, actual_cost_micro, prompt_tokens=prompt_tokens_count, completion_tokens=completion_tokens_count)
                 settled = True
 
             except Exception as e:

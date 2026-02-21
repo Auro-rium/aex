@@ -35,7 +35,7 @@ async def handle_non_streaming(
             if not resp_ok:
                 logger.warning("Post-flight policy violation", agent=agent, reason=resp_reason)
 
-            commit_usage(agent, estimated_cost_micro, actual_cost_micro)
+            commit_usage(agent, estimated_cost_micro, actual_cost_micro, prompt_tokens=actual_input, completion_tokens=actual_output)
 
             # Never expose provider_model externally
             resp_json["model"] = model_name

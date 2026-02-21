@@ -23,6 +23,8 @@ def create_agent(
     allowed_models: Optional[str] = typer.Option(None, "--allowed-models", help="Comma-separated list of allowed model names"),
     max_input_tokens: Optional[int] = typer.Option(None, "--max-input-tokens", help="Max input tokens per request"),
     max_output_tokens: Optional[int] = typer.Option(None, "--max-output-tokens", help="Max output tokens per request"),
+    max_tokens_per_request: Optional[int] = typer.Option(None, "--max-tokens-per-request", help="Total max tokens (input + output) per request"),
+    max_tokens_per_minute: Optional[int] = typer.Option(None, "--max-tokens-per-minute", help="Max tokens allowed per minute (TPM)"),
     no_streaming: bool = typer.Option(False, "--no-streaming", help="Disable streaming for this agent"),
     no_tools: bool = typer.Option(False, "--no-tools", help="Disable tool usage for this agent"),
     allowed_tool_names: Optional[str] = typer.Option(None, "--allowed-tool-names", help="Comma-separated list of allowed tool names"),
@@ -63,14 +65,16 @@ def create_agent(
                 """INSERT INTO agents (
                     name, api_token, budget_micro, rpm_limit,
                     allowed_models, max_input_tokens, max_output_tokens,
+                    max_tokens_per_request, max_tokens_per_minute,
                     allow_streaming, allow_tools, allowed_tool_names,
                     allow_function_calling, allow_vision, strict_mode,
                     token_hash, token_expires_at, token_scope,
                     allow_passthrough
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     name, token, budget_micro, rpm,
                     allowed_models_json, max_input_tokens, max_output_tokens,
+                    max_tokens_per_request, max_tokens_per_minute,
                     0 if no_streaming else 1,
                     0 if no_tools else 1,
                     allowed_tools_json,
@@ -161,6 +165,14 @@ def inspect_agent(name: str):
             console.print(f"  Max Input Tokens:  {d['max_input_tokens']}")
         if d.get("max_output_tokens"):
             console.print(f"  Max Output Tokens: {d['max_output_tokens']}")
+        if d.get("max_tokens_per_request"):
+            console.print(f"  Max Tok/Request:   {d['max_tokens_per_request']}")
+        if d.get("max_tokens_per_minute"):
+            console.print(f"  Max Tok/Minute:    {d['max_tokens_per_minute']}")
+        
+        console.print(f"  Used (Prompt):     {d.get('tokens_used_prompt', 0)}")
+        console.print(f"  Used (Output):     {d.get('tokens_used_completion', 0)}")
+        
         if d.get("allowed_tool_names"):
             console.print(f"  Allowed Tools:     {d['allowed_tool_names']}")
 
