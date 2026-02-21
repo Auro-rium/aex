@@ -47,8 +47,6 @@ def setup_logging(level: str = "INFO"):
     # Suppress uvicorn access logs to avoid distinct format
     logging.getLogger("uvicorn.access").disabled = True
 
-def get_logger(name: str):
-    return logging.getLogger(f"aex.{name}")
 
 class StructuredLogger:
     def __init__(self, name: str):

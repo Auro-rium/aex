@@ -1,108 +1,134 @@
 # AEX — AI Execution Kernel
 
-**Production-grade local proxy for AI agent governance.**
-
-AEX is the mandatory boundary between your AI agents and LLM providers.
-It enforces per-agent budgets, rate limits, model policies, and capability restrictions —
-transparently, with zero code changes in your agent code.
-
-## Install
-
-```bash
-pip install git+ssh://git@github.com/Auro-rium/aex.git
-```
-
-Or via pipx (recommended for CLI tools):
-
-```bash
-pipx install git+ssh://git@github.com/Auro-rium/aex.git
-```
-
-Pin to a release:
-
-```bash
-pip install git+ssh://git@github.com/Auro-rium/aex.git@v1.1.0
-```
+> Local-first governance layer for AI agent execution.  
+> Budget enforcement · Capability policies · Audit trails · OpenAI-compatible proxy.
 
 ## Quick Start
 
 ```bash
-# Initialize the AEX environment
+pip install -e .
 aex init
-
-# Set your provider API key
-echo "GROQ_API_KEY=your-key-here" > ~/.aex/.env
-
-# Start the kernel daemon
 aex daemon start
-
-# Create an agent with $10 budget and 60 RPM limit
-aex agent create my-agent 10 60
-
-# Run your script under AEX governance (zero code changes)
-aex run --agent my-agent python my_script.py
+aex agent create atlas 5.00 30
+aex doctor
 ```
 
-Your script uses `OpenAI()` as normal — AEX intercepts all calls
-via `OPENAI_BASE_URL` injection. Streaming is fully supported.
+## Architecture
 
-## What It Does
+```
+┌──────────────────────────────────────────────┐
+│           Agent Frameworks                    │
+│  (LangGraph · CrewAI · AutoGen · raw SDK)    │
+│                                               │
+│  OPENAI_BASE_URL=http://127.0.0.1:9000/v1   │
+│  OPENAI_API_KEY=<agent-token>                │
+└──────────────┬───────────────────────────────┘
+               │
+    ┌──────────▼──────────┐
+    │     AEX Daemon      │
+    │                     │
+    │  Auth (SHA-256)     │
+    │  Policy Engine      │
+    │  Budget Enforcer    │
+    │  Rate Limiter       │
+    │  Audit Logger       │
+    └──────────┬──────────┘
+               │
+    ┌──────────▼──────────┐
+    │  LLM Providers      │
+    │  (Groq · OpenAI)    │
+    └─────────────────────┘
+```
 
-| Feature              | Description                                           |
-|----------------------|-------------------------------------------------------|
-| Budget enforcement   | Integer micro-unit accounting, no float drift          |
-| Rate limiting        | Per-agent RPM limits                                   |
-| Model governance     | Reject unknown models, enforce capability gates        |
-| Transparent proxy    | Agents see standard OpenAI API, AEX maps to providers |
-| Streaming            | Full SSE passthrough with cost settlement              |
-| Crash recovery       | Stale reservations cleared on restart                  |
-| Config hot-reload    | Atomic — keeps old config on validation failure        |
-| PID supervision      | Track and kill runaway agent processes                 |
+## Features (v1.2)
+
+| Feature | Description |
+|---|---|
+| **Budget Enforcement** | Per-agent budget in USD, integer micro-unit accounting |
+| **Rate Limiting** | Per-agent RPM caps |
+| **Capability Policies** | Model whitelist, tool/streaming/vision toggles, strict mode |
+| **Token Hashing** | SHA-256 hashed storage, entropy validation |
+| **Token TTL** | Optional time-to-live (hours) on agent tokens |
+| **Token Scopes** | `execution` or `read-only` |
+| **Passthrough Mode** | Agents bring own provider keys, governance still active |
+| **Compatibility Contract** | 100% OpenAI protocol fidelity, verifiable via `aex doctor --compat` |
+| **Audit Trail** | Every request, denial, and violation logged |
+| **Dashboard** | Live metrics at `http://127.0.0.1:9000/dashboard` |
+| **Framework Integration** | `aex.integrations` helpers for Python |
+
+## Framework Compatibility
+
+| Framework | Integration Method |
+|---|---|
+| **LangGraph** | `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
+| **CrewAI** | `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
+| **AutoGen** | `OPENAI_BASE_URL` + `OPENAI_API_KEY` env vars |
+| **OpenAI SDK** | `openai.OpenAI(base_url=..., api_key=...)` |
+| **AEX Helper** | `from aex.integrations import get_openai_client` |
+
+### Python Integration
+
+```python
+from aex.integrations import get_openai_client
+
+client = get_openai_client("my-agent")
+response = client.chat.completions.create(
+    model="gpt-oss-20b",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+## Agent Management
+
+```bash
+# Create with capabilities
+aex agent create atlas 10.00 30 \
+  --allowed-models "gpt-oss-20b,gpt-oss-70b" \
+  --no-streaming \
+  --strict \
+  --ttl 24 \
+  --scope execution
+
+# Passthrough mode
+aex agent create proxy-agent 5.00 30 --allow-passthrough
+
+# Inspect
+aex agent inspect atlas
+
+# Rotate token with new TTL
+aex agent rotate-token atlas --ttl 48
+
+# List all
+aex agent list
+```
 
 ## CLI Reference
 
-```
-aex version                     # Show version
-aex init                        # Initialize ~/.aex
-aex daemon start                # Start the kernel daemon
-aex daemon stop                 # Stop the daemon
-aex daemon status               # Check daemon status
-aex agent create NAME USD RPM   # Create a new agent
-aex agent list [--verbose]      # List all agents
-aex agent inspect NAME          # Show agent details + token
-aex agent delete NAME           # Delete agent and clean up
-aex agent rotate-token NAME     # Rotate API token
-aex models reload               # Hot-reload model configuration
-aex run --agent NAME CMD...     # Execute under AEX governance
-aex metrics                     # Display system metrics
-```
+| Command | Description |
+|---|---|
+| `aex init` | Initialize `~/.aex` directory |
+| `aex daemon start/stop/status` | Manage daemon lifecycle |
+| `aex agent create/inspect/delete/list` | Agent CRUD |
+| `aex agent rotate-token` | Rotate agent API token |
+| `aex run --agent <name> <cmd>` | Run command as agent |
+| `aex doctor` | Environment health check |
+| `aex doctor --compat --token <t>` | Protocol fidelity tests |
+| `aex status` | Enforcement summary |
+| `aex audit` | Formal invariant verification |
+| `aex metrics` | Per-agent financials, burn rate, TTB |
+| `aex models reload` | Hot-reload model config |
+| `aex version` | Show version |
 
-## Configuration
+## Security Model
 
-Models are configured in `~/.aex/config/models.yaml`:
-
-```yaml
-version: 1
-
-providers:
-  groq:
-    base_url: https://api.groq.com/openai/v1
-    type: openai_compatible
-
-models:
-  gpt-oss-20b:
-    provider: groq
-    provider_model: llama-3.1-8b-instant
-    pricing:
-      input_micro: 50
-      output_micro: 100
-    limits:
-      max_tokens: 8192
-    capabilities:
-      reasoning: true
-      tools: true
-      vision: false
-```
+| Layer | Mechanism |
+|---|---|
+| Token Storage | SHA-256 hash (raw never stored for new agents) |
+| Token Entropy | Minimum 128-bit (32 hex chars) |
+| Token Expiry | Optional TTL in hours |
+| Token Scope | `execution` or `read-only` |
+| Provider Keys | Daemon-only, never exposed to agents |
+| Passthrough | Opt-in per agent, governance still enforced |
 
 ## License
 

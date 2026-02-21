@@ -35,3 +35,4 @@ htmlcov/
 
 # Build artifacts
 *.so
+tests/infra_assault.py
