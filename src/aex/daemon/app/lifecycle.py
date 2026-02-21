@@ -7,9 +7,9 @@ import httpx
 
 from ..db import init_db, check_db_integrity
 from ..utils.logging_config import StructuredLogger
-from ..utils.budget import clear_all_reservations
 from ..utils.supervisor import cleanup_dead_processes
 from ..utils.config_loader import config_loader
+from ..runtime import reconcile_incomplete_executions
 
 logger = StructuredLogger(__name__)
 
@@ -36,8 +36,9 @@ async def startup_event(app):
 
     config_loader.load_config()
 
-    logger.info("Clearing stale reservations...")
-    clear_all_reservations()
+    logger.info("Running crash recovery sweep...")
+    recovery_summary = reconcile_incomplete_executions()
+    logger.info("Recovery summary", **recovery_summary)
 
     asyncio.create_task(enforcement_loop())
 

@@ -13,6 +13,7 @@ from rich.table import Table
 from . import agent_app, console, DB_PATH
 from ..daemon.db import get_db_connection
 from ..daemon.auth import hash_token
+from ..daemon.control.lifecycle import transition_agent_state
 
 
 @agent_app.command("create")
@@ -146,6 +147,9 @@ def inspect_agent(name: str):
         console.print(f"  Remaining: ${remaining_usd:.6f}")
         console.print(f"  RPM Limit: {d['rpm_limit']}")
         console.print(f"  Last:      {d['last_activity'] or 'N/A'}")
+        console.print(f"  State:     {d.get('lifecycle_state', 'READY')}")
+        if d.get("lifecycle_reason"):
+            console.print(f"  Reason:    {d['lifecycle_reason']}")
 
         console.print()
         console.print("[bold]Capabilities:[/bold]")
@@ -288,6 +292,7 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
             table.add_column("Spent ($)", justify="right")
             table.add_column("Remaining ($)", justify="right")
         table.add_column("RPM", justify="right")
+        table.add_column("State")
         table.add_column("Scope")
         table.add_column("Caps")
         table.add_column("Last Activity")
@@ -321,6 +326,7 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
                     str(reserved_micro),
                     str(remaining_micro),
                     str(agent["rpm_limit"]),
+                    agent.get("lifecycle_state", "READY"),
                     scope_short,
                     caps_str,
                     agent["last_activity"] or "N/A",
@@ -332,6 +338,7 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
                     f"{spent_micro / 1_000_000:.6f}",
                     f"{remaining_micro / 1_000_000:.6f}",
                     str(agent["rpm_limit"]),
+                    agent.get("lifecycle_state", "READY"),
                     scope_short,
                     caps_str,
                     agent["last_activity"] or "N/A",
@@ -340,3 +347,20 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
         console.print(table)
     except Exception as e:
         console.print(f"[red]Error listing agents: {e}[/red]")
+
+
+@agent_app.command("state")
+def set_agent_state(
+    name: str,
+    to_state: str,
+    reason: str = typer.Option("operator transition", "--reason", help="Reason code for transition"),
+):
+    """Transition agent lifecycle state (enforced FSM)."""
+    os.environ["AEX_DB_PATH"] = str(DB_PATH)
+    try:
+        t = transition_agent_state(name, to_state, reason)
+        console.print(
+            f"[green]Agent '{t.agent}' transitioned {t.from_state} -> {t.to_state}[/green]"
+        )
+    except Exception as e:
+        console.print(f"[red]Failed to transition state: {e}[/red]")

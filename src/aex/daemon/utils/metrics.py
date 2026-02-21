@@ -1,6 +1,8 @@
 from ..db import get_db_connection
 from typing import Dict, Any
 from datetime import datetime, timedelta
+from ..observability import estimate_burn_windows
+from ..ledger import verify_hash_chain
 
 
 def get_metrics() -> Dict[str, Any]:
@@ -21,6 +23,15 @@ def get_metrics() -> Dict[str, Any]:
         ).fetchone()[0]
         total_denied_rate_limit = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'RATE_LIMIT'").fetchone()[0]
         total_policy_violations = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'POLICY_VIOLATION'").fetchone()[0]
+        total_executions = cursor.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
+        stale_reservations = cursor.execute(
+            "SELECT COUNT(*) FROM reservations WHERE state = 'RESERVED' AND expiry_at IS NOT NULL AND datetime(expiry_at) < CURRENT_TIMESTAMP"
+        ).fetchone()[0]
+        execution_states_rows = cursor.execute(
+            "SELECT state, COUNT(*) as c FROM executions GROUP BY state"
+        ).fetchall()
+        execution_states = {row["state"]: row["c"] for row in execution_states_rows}
+        hash_chain_rows = cursor.execute("SELECT COUNT(*) FROM event_log").fetchone()[0]
         
         # Top models used (from event metadata or upstream — we track via model name in events)
         top_models = []
@@ -89,6 +100,21 @@ def get_metrics() -> Dict[str, Any]:
                 "rpm_limit": row["rpm_limit"],
                 "last_activity": row["last_activity"],
             })
+
+        # Burn-rate windows from committed usage events.
+        burn_events = cursor.execute(
+            "SELECT agent, cost_micro, timestamp FROM events WHERE action IN ('usage.commit', 'USAGE_RECORDED')"
+        ).fetchall()
+        grouped_burn = {}
+        for ev in burn_events:
+            grouped_burn.setdefault(ev["agent"], []).append(dict(ev))
+
+        burn_rate_windows = {
+            agent: estimate_burn_windows(events)
+            for agent, events in grouped_burn.items()
+        }
+
+        chain_check = verify_hash_chain()
             
         return {
             "total_agents": total_agents,
@@ -98,7 +124,14 @@ def get_metrics() -> Dict[str, Any]:
             "total_denied_budget": total_denied_budget,
             "total_denied_rate_limit": total_denied_rate_limit,
             "total_policy_violations": total_policy_violations,
+            "total_executions": total_executions,
+            "execution_states": execution_states,
+            "stale_reservations": stale_reservations,
+            "event_log_size": hash_chain_rows,
+            "hash_chain_ok": chain_check.ok,
+            "hash_chain_detail": chain_check.detail,
             "top_models": top_models,
             "usage_histogram": histogram,
+            "burn_rate_windows": burn_rate_windows,
             "agents": agents,
         }

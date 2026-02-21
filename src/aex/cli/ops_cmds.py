@@ -84,6 +84,9 @@ def show_metrics():
         console.print(f"  Denied (Budget):    {data['total_denied_budget']}")
         console.print(f"  Denied (Rate):      {data['total_denied_rate_limit']}")
         console.print(f"  Policy Violations:  {data.get('total_policy_violations', 0)}")
+        console.print(f"  Executions:         {data.get('total_executions', 0)}")
+        console.print(f"  Stale Reservations: {data.get('stale_reservations', 0)}")
+        console.print(f"  Hash Chain:         {'PASS' if data.get('hash_chain_ok') else 'FAIL'}")
         console.print()
 
         if data.get("top_models"):

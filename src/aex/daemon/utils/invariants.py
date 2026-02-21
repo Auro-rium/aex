@@ -124,6 +124,44 @@ def check_spent_matches_events(conn) -> InvariantResult:
     return InvariantResult(name="spent_matches_events", passed=True)
 
 
+def check_reserved_matches_reservations(conn) -> InvariantResult:
+    """INV-6: agent.reserved_micro equals sum of RESERVED tickets."""
+    rows = conn.execute(
+        """
+        SELECT a.name,
+               a.reserved_micro AS agent_reserved,
+               COALESCE(SUM(CASE WHEN r.state = 'RESERVED' THEN r.estimated_micro ELSE 0 END), 0) AS ticket_reserved
+        FROM agents a
+        LEFT JOIN reservations r ON r.agent = a.name
+        GROUP BY a.name, a.reserved_micro
+        HAVING a.reserved_micro != COALESCE(SUM(CASE WHEN r.state = 'RESERVED' THEN r.estimated_micro ELSE 0 END), 0)
+        """
+    ).fetchall()
+    if rows:
+        details = [
+            f"{r['name']}: reserved_micro={r['agent_reserved']} ticket_sum={r['ticket_reserved']}"
+            for r in rows
+        ]
+        return InvariantResult(
+            name="reserved_matches_reservations",
+            passed=False,
+            detail=f"Mismatches: {'; '.join(details)}",
+        )
+    return InvariantResult(name="reserved_matches_reservations", passed=True)
+
+
+def check_event_hash_chain() -> InvariantResult:
+    """INV-7: hash-chained event log must be internally consistent."""
+    from ..ledger.replay import verify_hash_chain
+
+    result = verify_hash_chain()
+    return InvariantResult(
+        name="event_hash_chain",
+        passed=result.ok,
+        detail=None if result.ok else result.detail,
+    )
+
+
 def run_all_checks(conn) -> list[InvariantResult]:
     """Run all invariant checks and return results."""
     return [
@@ -132,4 +170,6 @@ def run_all_checks(conn) -> list[InvariantResult]:
         check_no_orphaned_reservations(conn),
         check_event_log_integrity(conn),
         check_spent_matches_events(conn),
+        check_reserved_matches_reservations(conn),
+        check_event_hash_chain(),
     ]

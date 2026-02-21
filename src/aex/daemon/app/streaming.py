@@ -6,15 +6,23 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..utils.logging_config import StructuredLogger
-from ..utils.budget import commit_usage, release_reservation_on_error
+from ..ledger import commit_execution_usage, release_execution_reservation
+from ..ledger.budget import mark_execution_dispatched
 from .lifecycle import get_http_client
 
 logger = StructuredLogger(__name__)
 
 
 async def handle_streaming(
-    agent, model_name, model_config,
-    estimated_cost_micro, target_url, headers, upstream_body
+    *,
+    agent,
+    execution_id: str,
+    model_name,
+    model_config,
+    estimated_cost_micro,
+    target_url,
+    headers,
+    upstream_body,
 ):
     """
     Handle streaming proxy request.
@@ -26,6 +34,7 @@ async def handle_streaming(
     - On abort/error: release full reservation
     """
     client = await get_http_client()
+    mark_execution_dispatched(execution_id)
 
     try:
         upstream_req = client.build_request("POST", target_url, json=upstream_body, headers=headers)
@@ -33,7 +42,13 @@ async def handle_streaming(
 
         if response.status_code != 200:
             await response.aread()
-            release_reservation_on_error(agent, estimated_cost_micro)
+            release_execution_reservation(
+                agent=agent,
+                execution_id=execution_id,
+                estimated_cost_micro=estimated_cost_micro,
+                reason=f"Streaming upstream failed with HTTP {response.status_code}",
+                status_code=response.status_code,
+            )
             try:
                 err_body = response.json()
             except Exception:
@@ -95,18 +110,39 @@ async def handle_streaming(
                     prompt_tokens_count * model_config.pricing.input_micro
                     + completion_tokens_count * model_config.pricing.output_micro
                 )
-                commit_usage(agent, estimated_cost_micro, actual_cost_micro, prompt_tokens=prompt_tokens_count, completion_tokens=completion_tokens_count)
+                commit_execution_usage(
+                    agent=agent,
+                    execution_id=execution_id,
+                    estimated_cost_micro=estimated_cost_micro,
+                    actual_cost_micro=actual_cost_micro,
+                    prompt_tokens=prompt_tokens_count,
+                    completion_tokens=completion_tokens_count,
+                    model_name=model_name,
+                    response_body={"stream": True, "usage": {"prompt_tokens": prompt_tokens_count, "completion_tokens": completion_tokens_count}},
+                )
                 settled = True
 
             except Exception as e:
                 logger.error("Streaming error", error=str(e), agent=agent)
                 if not settled:
-                    release_reservation_on_error(agent, estimated_cost_micro)
+                    release_execution_reservation(
+                        agent=agent,
+                        execution_id=execution_id,
+                        estimated_cost_micro=estimated_cost_micro,
+                        reason="Streaming relay failed",
+                        status_code=502,
+                    )
                 raise
             finally:
                 await response.aclose()
                 if not settled:
-                    release_reservation_on_error(agent, estimated_cost_micro)
+                    release_execution_reservation(
+                        agent=agent,
+                        execution_id=execution_id,
+                        estimated_cost_micro=estimated_cost_micro,
+                        reason="Streaming ended before settlement",
+                        status_code=502,
+                    )
 
         return StreamingResponse(
             stream_generator(),
@@ -122,5 +158,11 @@ async def handle_streaming(
         raise
     except Exception as e:
         logger.error("Streaming setup error", error=str(e))
-        release_reservation_on_error(agent, estimated_cost_micro)
+        release_execution_reservation(
+            agent=agent,
+            execution_id=execution_id,
+            estimated_cost_micro=estimated_cost_micro,
+            reason="Streaming setup error",
+            status_code=502,
+        )
         raise HTTPException(status_code=502, detail="Upstream provider error")
