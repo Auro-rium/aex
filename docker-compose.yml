@@ -23,7 +23,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AEX_PG_DSN: postgresql://aex:aex@postgres:5432/aex
+      AEX_PG_DSN: ${AEX_PG_DSN:-postgresql://aex:aex@postgres:5432/aex}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       AEX_ALERT_STALE_RESERVATIONS: 20

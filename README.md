@@ -47,6 +47,7 @@ aex migrate rollback --tag pre_change
 
 ## Production
 
-- Fly config: `fly.toml`
+- Docker backend (any VPS/provider)
 - Vercel edge proxy: `deploy/vercel/vercel.json`
+- set proxy destination to your backend domain
 - smoke check: `scripts/prod_smoke.sh`
