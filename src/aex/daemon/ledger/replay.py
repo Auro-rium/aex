@@ -22,27 +22,33 @@ def verify_hash_chain() -> ReplayResult:
     """Verify event_log hash chain integrity end-to-end."""
     with get_db_connection() as conn:
         rows = conn.execute(
-            "SELECT seq, execution_id, event_type, payload_json, prev_hash, event_hash FROM event_log ORDER BY seq ASC"
+            """
+            SELECT seq, chain_partition, execution_id, event_type, payload_json, prev_hash, event_hash
+            FROM event_log
+            ORDER BY chain_partition ASC, seq ASC
+            """
         ).fetchall()
 
-    prev = "GENESIS"
+    prev_by_partition: dict[str, str] = {}
     for row in rows:
+        partition = row["chain_partition"] or "default"
+        prev = prev_by_partition.get(partition, "GENESIS")
         expected = stable_hash_hex(prev, row["event_type"], row["execution_id"] or "", row["payload_json"])
         if row["prev_hash"] != prev:
             return ReplayResult(
                 ok=False,
-                detail=f"prev_hash mismatch at seq={row['seq']}",
+                detail=f"prev_hash mismatch at partition={partition} seq={row['seq']}",
                 expected=prev,
                 observed=row["prev_hash"],
             )
         if row["event_hash"] != expected:
             return ReplayResult(
                 ok=False,
-                detail=f"event_hash mismatch at seq={row['seq']}",
+                detail=f"event_hash mismatch at partition={partition} seq={row['seq']}",
                 expected=expected,
                 observed=row["event_hash"],
             )
-        prev = row["event_hash"]
+        prev_by_partition[partition] = row["event_hash"]
 
     return ReplayResult(ok=True, detail=f"hash chain verified for {len(rows)} events")
 

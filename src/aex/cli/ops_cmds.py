@@ -10,7 +10,7 @@ from rich.table import Table
 
 from .. import __version__
 from ..daemon.db import get_db_connection
-from . import app, models_app, console, AEX_DIR, DB_PATH, LOG_DIR, CONFIG_DIR, MODELS_CONFIG_FILE, PID_FILE, get_daemon_pid
+from . import app, models_app, console, AEX_DIR, LOG_DIR, CONFIG_DIR, MODELS_CONFIG_FILE, PID_FILE, get_daemon_pid
 
 
 # ── Run ─────────────────────────────────────────────────────────────────────
@@ -25,13 +25,11 @@ def run_command(
 
     Example: aex run --agent my-agent python script.py
     """
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
-
     try:
         with get_db_connection() as conn:
             row = conn.execute("SELECT api_token FROM agents WHERE name = ?", (agent,)).fetchone()
     except Exception:
-        console.print("[red]Database error. Is AEX initialized?[/red]")
+        console.print("[red]Database error. Is AEX_PG_DSN configured and reachable?[/red]")
         raise typer.Exit(1)
 
     if not row:
@@ -211,9 +209,12 @@ def doctor(
         all_ok = False
 
     # 2. Database
-    if DB_PATH.exists():
-        console.print(f"  ✅ Database:       {DB_PATH}")
-        os.environ["AEX_DB_PATH"] = str(DB_PATH)
+    dsn = (os.getenv("AEX_PG_DSN") or "").strip()
+    if not dsn:
+        console.print("  ❌ Database DSN:   AEX_PG_DSN not set")
+        all_ok = False
+    else:
+        console.print("  ✅ Database DSN:   configured")
         try:
             from ..daemon.db import check_db_integrity
 
@@ -225,9 +226,6 @@ def doctor(
         except Exception as e:
             console.print(f"  ❌ DB Integrity:   ERROR ({e})")
             all_ok = False
-    else:
-        console.print("  ❌ Database:       NOT FOUND (run: aex init)")
-        all_ok = False
 
     # 3. Config
     if MODELS_CONFIG_FILE.exists():
@@ -267,6 +265,16 @@ def doctor(
                     console.print(f"  ⚠️  Daemon Health:  HTTP {r.status_code}")
             except Exception:
                 console.print("  ⚠️  Daemon Health:  Not reachable on port 9000")
+            try:
+                ready_res = httpx.get("http://127.0.0.1:9000/ready", timeout=5.0)
+                if ready_res.status_code == 200:
+                    console.print("  ✅ Readiness:      READY")
+                else:
+                    console.print(f"  ⚠️  Readiness:      NOT READY (HTTP {ready_res.status_code})")
+                    all_ok = False
+            except Exception as exc:
+                console.print(f"  ⚠️  Readiness:      ERROR ({exc})")
+                all_ok = False
         except ProcessLookupError:
             console.print(f"  ⚠️  Daemon:         Stale PID file (PID {pid} not running)")
             all_ok = False
@@ -274,11 +282,8 @@ def doctor(
         console.print("  ⚠️  Daemon:         Not running")
 
     # 5. .env
-    env_file = AEX_DIR / ".env"
-    if env_file.exists():
-        console.print(f"  ✅ .env file:      {env_file}")
-    else:
-        console.print("  ⚠️  .env file:      NOT FOUND (API keys may not be set)")
+    if dsn:
+        console.print("  ✅ Backend:        PostgreSQL")
 
     console.print()
     if all_ok:
@@ -287,17 +292,48 @@ def doctor(
         console.print("[yellow]Some issues detected. Review above.[/yellow]")
 
 
+@app.command("alerts")
+def show_alerts():
+    """Fetch active alerts from backend readiness/observability layer."""
+    import httpx
+
+    try:
+        res = httpx.get("http://127.0.0.1:9000/admin/alerts", timeout=5.0)
+        if res.status_code != 200:
+            console.print(f"[red]Failed to fetch alerts: HTTP {res.status_code}[/red]")
+            raise typer.Exit(1)
+        payload = res.json()
+        summary = payload.get("summary", {})
+        alerts = payload.get("alerts", [])
+        console.print("[bold]AEX Alerts[/bold]")
+        console.print(
+            f"  total={summary.get('total', 0)} "
+            f"critical={summary.get('critical', 0)} "
+            f"warning={summary.get('warning', 0)}"
+        )
+        if not alerts:
+            console.print("[green]No active alerts.[/green]")
+            return
+        for alert in alerts:
+            sev = str(alert.get("severity", "info")).upper()
+            msg = str(alert.get("message", ""))
+            aid = str(alert.get("id", ""))
+            detail = str(alert.get("detail", ""))
+            console.print(f"  [{sev}] {aid}: {msg}")
+            if detail:
+                console.print(f"    {detail}")
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        console.print(f"[red]Alert fetch error: {exc}[/red]")
+        raise typer.Exit(1)
+
+
 # ── Status ──────────────────────────────────────────────────────────────────
 
 @app.command("status")
 def show_status():
     """Show enforcement summary."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
-
-    if not DB_PATH.exists():
-        console.print("[red]Database not found. Run: aex init[/red]")
-        raise typer.Exit(1)
-
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -353,12 +389,6 @@ def show_status():
 @app.command("audit")
 def audit():
     """Run formal invariant checks on the database."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
-
-    if not DB_PATH.exists():
-        console.print("[red]Database not found. Run: aex init[/red]")
-        raise typer.Exit(1)
-
     console.print("[bold]AEX Audit — Invariant Verification[/bold]")
     console.print()
 

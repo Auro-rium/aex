@@ -10,7 +10,7 @@ from typing import Optional
 import typer
 from rich.table import Table
 
-from . import agent_app, console, DB_PATH
+from . import agent_app, console
 from ..daemon.db import get_db_connection
 from ..daemon.auth import hash_token
 from ..daemon.control.lifecycle import transition_agent_state
@@ -21,6 +21,8 @@ def create_agent(
     name: str,
     budget: float,
     rpm: int,
+    tenant_id: str = typer.Option("default", "--tenant-id", help="Tenant scope ID"),
+    project_id: str = typer.Option("default", "--project-id", help="Project scope ID"),
     allowed_models: Optional[str] = typer.Option(None, "--allowed-models", help="Comma-separated list of allowed model names"),
     max_input_tokens: Optional[int] = typer.Option(None, "--max-input-tokens", help="Max input tokens per request"),
     max_output_tokens: Optional[int] = typer.Option(None, "--max-output-tokens", help="Max output tokens per request"),
@@ -37,7 +39,6 @@ def create_agent(
     allow_passthrough: bool = typer.Option(False, "--allow-passthrough", help="Allow agent to use own provider API key"),
 ):
     """Create a new agent with budget (USD) and RPM limit."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
 
     if scope not in ("execution", "read-only"):
         console.print("[red]Error: --scope must be 'execution' or 'read-only'[/red]")
@@ -60,20 +61,39 @@ def create_agent(
     if allowed_tool_names:
         allowed_tools_json = json.dumps([t.strip() for t in allowed_tool_names.split(",")])
 
+    tenant_id = tenant_id.strip() or "default"
+    project_id = project_id.strip() or "default"
+
     try:
         with get_db_connection() as conn:
             conn.execute(
+                """
+                INSERT INTO tenants (tenant_id, name, slug, status)
+                VALUES (?, ?, ?, 'ACTIVE')
+                ON CONFLICT(tenant_id) DO NOTHING
+                """,
+                (tenant_id, f"Tenant {tenant_id}", tenant_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO projects (project_id, tenant_id, name, slug, status)
+                VALUES (?, ?, ?, ?, 'ACTIVE')
+                ON CONFLICT(project_id) DO NOTHING
+                """,
+                (project_id, tenant_id, f"Project {project_id}", project_id),
+            )
+            conn.execute(
                 """INSERT INTO agents (
-                    name, api_token, budget_micro, rpm_limit,
+                    name, tenant_id, project_id, api_token, budget_micro, rpm_limit,
                     allowed_models, max_input_tokens, max_output_tokens,
                     max_tokens_per_request, max_tokens_per_minute,
                     allow_streaming, allow_tools, allowed_tool_names,
                     allow_function_calling, allow_vision, strict_mode,
                     token_hash, token_expires_at, token_scope,
                     allow_passthrough
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    name, token, budget_micro, rpm,
+                    name, tenant_id, project_id, token, budget_micro, rpm,
                     allowed_models_json, max_input_tokens, max_output_tokens,
                     max_tokens_per_request, max_tokens_per_minute,
                     0 if no_streaming else 1,
@@ -88,6 +108,7 @@ def create_agent(
             )
             conn.commit()
         console.print(f"[green]Agent '{name}' created.[/green]")
+        console.print(f"Scope: tenant={tenant_id} project={project_id}")
         console.print(f"Token: [bold]{token}[/bold]")
         console.print(f"Budget: ${budget:.2f} ({budget_micro} micro)")
 
@@ -120,12 +141,12 @@ def create_agent(
 
     except Exception as e:
         console.print(f"[red]Error creating agent: {e}[/red]")
+        raise typer.Exit(1)
 
 
 @agent_app.command("inspect")
 def inspect_agent(name: str):
     """Get agent details including token (sensitive)."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         with get_db_connection() as conn:
             row = conn.execute("SELECT * FROM agents WHERE name = ?", (name,)).fetchone()
@@ -141,6 +162,8 @@ def inspect_agent(name: str):
         remaining_usd = budget_usd - spent_usd - reserved_usd
 
         console.print(f"[bold]Agent: {d['name']}[/bold]")
+        console.print(f"  Tenant:    {d.get('tenant_id', 'default')}")
+        console.print(f"  Project:   {d.get('project_id', 'default')}")
         console.print(f"  Budget:    ${budget_usd:.6f}  ({d['budget_micro']} µ)")
         console.print(f"  Spent:     ${spent_usd:.6f}  ({d['spent_micro']} µ)")
         console.print(f"  Reserved:  ${reserved_usd:.6f}  ({d['reserved_micro']} µ)")
@@ -202,7 +225,6 @@ def inspect_agent(name: str):
 @agent_app.command("delete")
 def delete_agent(name: str):
     """Delete an agent, kill its process, and remove reservations."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -243,7 +265,6 @@ def rotate_token(
     ttl: Optional[float] = typer.Option(None, "--ttl", help="New token TTL in hours. Supports fractional hours (e.g., 0.001 for ~3.6 seconds)"),
 ):
     """Rotate an agent's API token (invalidates old token)."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     new_token = secrets.token_hex(16)
     new_hash = hash_token(new_token)
 
@@ -275,13 +296,14 @@ def rotate_token(
 @agent_app.command("list")
 def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Show raw micro-units")):
     """List all agents."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         with get_db_connection() as conn:
             agents = conn.execute("SELECT * FROM agents").fetchall()
 
         table = Table(title="AEX Agents")
         table.add_column("Name")
+        table.add_column("Tenant")
+        table.add_column("Project")
         if verbose:
             table.add_column("Budget (µ)", justify="right")
             table.add_column("Spent (µ)", justify="right")
@@ -321,6 +343,8 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
             if verbose:
                 table.add_row(
                     agent["name"],
+                    agent.get("tenant_id", "default"),
+                    agent.get("project_id", "default"),
                     str(budget_micro),
                     str(spent_micro),
                     str(reserved_micro),
@@ -334,6 +358,8 @@ def list_agents(verbose: bool = typer.Option(False, "--verbose", "-v", help="Sho
             else:
                 table.add_row(
                     agent["name"],
+                    agent.get("tenant_id", "default"),
+                    agent.get("project_id", "default"),
                     f"{budget_micro / 1_000_000:.6f}",
                     f"{spent_micro / 1_000_000:.6f}",
                     f"{remaining_micro / 1_000_000:.6f}",
@@ -356,7 +382,6 @@ def set_agent_state(
     reason: str = typer.Option("operator transition", "--reason", help="Reason code for transition"),
 ):
     """Transition agent lifecycle state (enforced FSM)."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         t = transition_agent_state(name, to_state, reason)
         console.print(

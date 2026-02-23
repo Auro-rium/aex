@@ -1,4 +1,4 @@
-"""Database integrity checks for schema + accounting invariants."""
+"""Database integrity checks for schema + accounting invariants (PostgreSQL)."""
 
 from __future__ import annotations
 
@@ -14,18 +14,31 @@ _REQUIRED_TABLES = (
     "event_log",
     "tool_plugins",
     "rate_windows",
+    "tenants",
+    "projects",
+    "users",
+    "memberships",
+    "budgets",
+    "quota_limits",
+    "webhook_subscriptions",
+    "webhook_deliveries",
 )
 
 
 def check_db_integrity() -> bool:
     """Run fast physical+logical checks used by daemon startup."""
     with get_db_connection() as conn:
-        quick = conn.execute("PRAGMA quick_check").fetchone()[0]
-        if str(quick).lower() != "ok":
-            return False
+        # Basic liveness.
+        conn.execute("SELECT 1")
 
-        table_rows = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
-        table_names = {row[0] for row in table_rows}
+        table_rows = conn.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            """
+        ).fetchall()
+        table_names = {str(row["table_name"]) for row in table_rows}
         if any(name not in table_names for name in _REQUIRED_TABLES):
             return False
 

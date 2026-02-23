@@ -11,6 +11,8 @@ def get_metrics() -> Dict[str, Any]:
         
         # Global stats
         total_agents = cursor.execute("SELECT COUNT(*) FROM agents").fetchone()[0]
+        total_tenants = cursor.execute("SELECT COUNT(*) FROM tenants").fetchone()[0]
+        total_projects = cursor.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
         total_spent_micro = cursor.execute("SELECT SUM(spent_micro) FROM agents").fetchone()[0] or 0
         active_processes = cursor.execute("SELECT COUNT(*) FROM pids").fetchone()[0]
         
@@ -25,7 +27,7 @@ def get_metrics() -> Dict[str, Any]:
         total_policy_violations = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'POLICY_VIOLATION'").fetchone()[0]
         total_executions = cursor.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
         stale_reservations = cursor.execute(
-            "SELECT COUNT(*) FROM reservations WHERE state = 'RESERVED' AND expiry_at IS NOT NULL AND datetime(expiry_at) < CURRENT_TIMESTAMP"
+            "SELECT COUNT(*) FROM reservations WHERE state = 'RESERVED' AND NULLIF(expiry_at, '') IS NOT NULL AND CAST(NULLIF(expiry_at, '') AS timestamptz) < CURRENT_TIMESTAMP"
         ).fetchone()[0]
         execution_states_rows = cursor.execute(
             "SELECT state, COUNT(*) as c FROM executions GROUP BY state"
@@ -118,6 +120,8 @@ def get_metrics() -> Dict[str, Any]:
             
         return {
             "total_agents": total_agents,
+            "total_tenants": total_tenants,
+            "total_projects": total_projects,
             "total_spent_global_usd": total_spent_micro / 1_000_000,
             "active_processes": active_processes,
             "total_requests": total_requests,

@@ -2,6 +2,7 @@
 
 import os
 import asyncio
+import time
 
 import httpx
 
@@ -52,9 +53,22 @@ async def shutdown_event():
 
 async def enforcement_loop():
     logger.info("Enforcement loop started")
+    recovery_interval_sec = max(5, int(os.getenv("AEX_RECOVERY_SWEEP_SECONDS", "15")))
+    last_recovery = 0.0
     while True:
         try:
             cleanup_dead_processes()
+            now = time.monotonic()
+            if (now - last_recovery) >= recovery_interval_sec:
+                summary = reconcile_incomplete_executions()
+                if summary.get("released", 0) or summary.get("failed", 0):
+                    logger.info(
+                        "Recovery sweep applied",
+                        released=summary.get("released", 0),
+                        failed=summary.get("failed", 0),
+                        scanned=summary.get("scanned", 0),
+                    )
+                last_recovery = now
             await asyncio.sleep(2)
         except Exception as e:
             logger.error("Enforcement loop error", error=str(e))

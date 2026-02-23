@@ -1,14 +1,12 @@
-"""AEX admin endpoints — health, metrics, dashboard, config reload."""
+"""AEX admin endpoints — health/readiness, metrics, dashboard, config reload."""
 
-import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
-from aex import __version__
-from ..db import get_db_connection
-from ..ledger import replay_ledger_balances, verify_hash_chain
+from ..frontend import activity_snapshot, dashboard_payload
+from ..observability import collect_active_alerts, liveness_report, readiness_report, summarize_alerts
 from ..utils.config_loader import config_loader
 from ..utils.logging_config import StructuredLogger
 from ..utils.metrics import get_metrics
@@ -17,74 +15,22 @@ logger = StructuredLogger(__name__)
 router = APIRouter()
 
 
-def _parse_payload(value):
-    if not value:
-        return None
-    try:
-        return json.loads(value)
-    except Exception:
-        return {"raw": value}
-
-
 @router.get("/admin/activity")
 async def activity_feed_endpoint(limit: int = Query(default=40, ge=10, le=200)):
     """Return recent backend activity for the local dashboard UI."""
-    with get_db_connection() as conn:
-        executions = conn.execute(
-            """
-            SELECT execution_id, agent, endpoint, state, status_code, created_at, updated_at, terminal_at
-            FROM executions
-            ORDER BY COALESCE(updated_at, created_at) DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        reservations = conn.execute(
-            """
-            SELECT execution_id, agent, estimated_micro, actual_micro, state, reserved_at, settled_at, expiry_at
-            FROM reservations
-            ORDER BY COALESCE(settled_at, reserved_at) DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        event_log = conn.execute(
-            """
-            SELECT seq, execution_id, agent, event_type, payload_json, ts
-            FROM event_log
-            ORDER BY seq DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        compat_events = conn.execute(
-            """
-            SELECT id, agent, action, cost_micro, timestamp, metadata
-            FROM events
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+    return activity_snapshot(limit=limit)
 
-    execution_states = {}
-    for row in executions:
-        state = str(row["state"] or "UNKNOWN")
-        execution_states[state] = execution_states.get(state, 0) + 1
 
-    return {
-        "execution_state_counts": execution_states,
-        "executions": [dict(r) for r in executions],
-        "reservations": [dict(r) for r in reservations],
-        "event_log": [
-            {
-                **dict(r),
-                "payload": _parse_payload(r["payload_json"]),
-            }
-            for r in event_log
-        ],
-        "compat_events": [dict(r) for r in compat_events],
-    }
+@router.get("/admin/dashboard/data")
+async def dashboard_data_endpoint(limit: int = Query(default=120, ge=20, le=500)):
+    """Backend-oriented payload for the dashboard UI."""
+    return dashboard_payload(limit=limit)
+
+
+@router.get("/admin/alerts")
+async def alerts_endpoint():
+    alerts = collect_active_alerts()
+    return {"alerts": alerts, "summary": summarize_alerts(alerts)}
 
 
 @router.post("/admin/reload_config")
@@ -99,14 +45,8 @@ async def reload_config_endpoint():
 
 @router.get("/admin/replay")
 async def replay_audit_endpoint():
-    chain = verify_hash_chain()
-    replay = replay_ledger_balances()
-    return {
-        "hash_chain_ok": chain.ok,
-        "hash_chain_detail": chain.detail,
-        "balance_replay_ok": replay.ok,
-        "balance_replay_detail": replay.detail,
-    }
+    payload = dashboard_payload(limit=40)
+    return payload["replay"]
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -120,7 +60,14 @@ async def dashboard_endpoint():
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "version": __version__}
+    return liveness_report()
+
+
+@router.get("/ready")
+async def ready():
+    ready_ok, report = readiness_report()
+    status_code = 200 if ready_ok else 503
+    return JSONResponse(content=report, status_code=status_code)
 
 
 @router.get("/metrics")

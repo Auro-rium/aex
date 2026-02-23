@@ -24,12 +24,16 @@ def execution_id_for_request(
     body: dict[str, Any],
     idempotency_key: str | None,
     step_id: str | None,
+    explicit_execution_id: str | None = None,
 ) -> tuple[str, str]:
     """Resolve execution_id and request_hash for an inbound request."""
     normalized_step = (step_id or "").strip()
     req_hash = canonical_request_hash(agent, endpoint, body, normalized_step)
 
-    if idempotency_key:
+    forced = (explicit_execution_id or "").strip()
+    if forced:
+        execution_id = forced
+    elif idempotency_key:
         execution_id = stable_hash_hex(agent, endpoint, idempotency_key.strip())
     else:
         execution_id = req_hash

@@ -6,40 +6,39 @@
   <title>AEX Backend Playout</title>
   <style>
     :root {
-      --bg-0: #09121a;
-      --bg-1: #0f1f2a;
-      --bg-2: #152b38;
-      --ink: #e8f2ef;
-      --muted: #9fb4ad;
-      --ok: #23bf73;
-      --warn: #f0b429;
-      --bad: #ff5d5d;
-      --accent: #3bc3b1;
-      --card: rgba(15, 31, 42, 0.78);
-      --line: rgba(157, 187, 179, 0.2);
+      --bg-0: #08141d;
+      --bg-1: #0e2230;
+      --bg-2: #173849;
+      --ink: #e9f4f0;
+      --muted: #9db2aa;
+      --ok: #22c373;
+      --warn: #e8b735;
+      --bad: #ff6666;
+      --accent: #37c5b4;
+      --accent-2: #5ab5ff;
+      --card: rgba(13, 30, 41, 0.8);
+      --line: rgba(158, 189, 180, 0.2);
       --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
       --radius: 14px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       color: var(--ink);
       font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
       background:
-        radial-gradient(1200px 600px at 90% -5%, rgba(59, 195, 177, 0.22), transparent 55%),
-        radial-gradient(1000px 520px at -10% 15%, rgba(42, 126, 184, 0.20), transparent 55%),
-        linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+        radial-gradient(1200px 620px at 92% -6%, rgba(55, 197, 180, 0.22), transparent 55%),
+        radial-gradient(1000px 520px at -8% 18%, rgba(58, 132, 187, 0.2), transparent 55%),
+        linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 48%, var(--bg-2) 100%);
       min-height: 100vh;
     }
 
     .wrap {
-      max-width: 1280px;
+      max-width: 1360px;
       margin: 0 auto;
-      padding: 24px 16px 44px;
+      padding: 24px 16px 46px;
     }
 
     .hero {
@@ -48,7 +47,7 @@
       gap: 12px;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       animation: rise 380ms ease-out;
     }
 
@@ -59,7 +58,7 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(1.2rem, 2.6vw, 1.8rem);
+      font-size: clamp(1.2rem, 2.7vw, 1.85rem);
       letter-spacing: 0.02em;
     }
 
@@ -67,48 +66,59 @@
       color: var(--muted);
       margin-top: 2px;
       font-size: 0.92rem;
+      max-width: 760px;
     }
 
     .toolbar {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
     }
 
-    .btn {
+    .btn, .input, .select {
       border: 1px solid var(--line);
       color: var(--ink);
-      background: rgba(24, 49, 65, 0.8);
+      background: rgba(20, 45, 60, 0.82);
       border-radius: 999px;
       padding: 8px 14px;
-      font: 600 0.85rem/1 "Space Grotesk", "Avenir Next", sans-serif;
+      font: 600 0.84rem/1 "Space Grotesk", "Avenir Next", sans-serif;
+    }
+
+    .btn {
       cursor: pointer;
+      transition: border-color 180ms ease, transform 180ms ease;
     }
 
     .btn:hover {
-      border-color: rgba(59, 195, 177, 0.55);
+      border-color: rgba(55, 197, 180, 0.6);
       transform: translateY(-1px);
     }
 
-    .grid {
-      display: grid;
-      gap: 14px;
-      margin-bottom: 14px;
+    .btn.active {
+      border-color: rgba(55, 197, 180, 0.8);
+      box-shadow: inset 0 0 0 1px rgba(55, 197, 180, 0.35);
     }
 
-    .kpis {
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      animation: rise 480ms ease-out;
+    .input, .select {
+      outline: none;
+      min-width: 120px;
     }
 
-    .split {
-      grid-template-columns: 1.25fr 1fr;
-      animation: rise 560ms ease-out;
+    .input:focus, .select:focus {
+      border-color: rgba(90, 181, 255, 0.75);
+      box-shadow: 0 0 0 2px rgba(90, 181, 255, 0.22);
     }
 
-    .full {
-      animation: rise 650ms ease-out;
+    .mono {
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.78rem;
     }
+
+    .grid { display: grid; gap: 14px; margin-bottom: 14px; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); animation: rise 460ms ease-out; }
+    .split { grid-template-columns: 1.15fr 1fr; animation: rise 550ms ease-out; }
+    .full { animation: rise 640ms ease-out; }
 
     .card {
       border: 1px solid var(--line);
@@ -121,15 +131,36 @@
 
     .card h2 {
       margin: 0 0 10px;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--muted);
     }
 
+    .control-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      align-items: center;
+    }
+
+    .control-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-left: 8px;
+    }
+
     .kpi-label {
       color: var(--muted);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       text-transform: uppercase;
       letter-spacing: 0.07em;
       margin-bottom: 5px;
@@ -152,35 +183,23 @@
       display: inline-block;
       border-radius: 999px;
       padding: 2px 9px;
-      font-size: 0.74rem;
+      font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.04em;
       border: 1px solid transparent;
       font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
     }
 
-    .ok { color: var(--ok); border-color: rgba(35, 191, 115, 0.45); }
-    .warn { color: var(--warn); border-color: rgba(240, 180, 41, 0.45); }
-    .bad { color: var(--bad); border-color: rgba(255, 93, 93, 0.45); }
+    .ok { color: var(--ok); border-color: rgba(34, 195, 115, 0.45); }
+    .warn { color: var(--warn); border-color: rgba(232, 183, 53, 0.45); }
+    .bad { color: var(--bad); border-color: rgba(255, 102, 102, 0.45); }
 
-    .status-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0 0;
-    }
+    .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
 
-    .states {
-      display: grid;
-      gap: 8px;
-      max-height: 290px;
-      overflow: auto;
-      padding-right: 4px;
-    }
-
+    .states { display: grid; gap: 8px; max-height: 280px; overflow: auto; padding-right: 4px; }
     .state-bar-row {
       display: grid;
-      grid-template-columns: 110px 1fr 52px;
+      grid-template-columns: 120px 1fr 52px;
       gap: 8px;
       align-items: center;
       font-size: 0.84rem;
@@ -196,7 +215,7 @@
 
     .bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #23bf73, #3bc3b1);
+      background: linear-gradient(90deg, var(--accent-2), var(--accent));
       border-radius: 8px;
       transition: width 250ms ease;
     }
@@ -205,7 +224,7 @@
       display: flex;
       align-items: end;
       gap: 4px;
-      height: 178px;
+      height: 176px;
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 10px;
@@ -216,38 +235,33 @@
       flex: 1;
       min-width: 8px;
       border-radius: 4px 4px 2px 2px;
-      background: linear-gradient(180deg, #5dc6ff, #3bc3b1);
-      opacity: 0.9;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      opacity: 0.92;
       transition: height 200ms ease;
       position: relative;
     }
 
     .hist-bar:hover::after {
-      content: attr(data-label) " • " attr(data-value);
+      content: attr(data-label) " - " attr(data-value);
       position: absolute;
-      left: -12px;
+      left: -10px;
       bottom: calc(100% + 5px);
       white-space: nowrap;
       padding: 3px 6px;
       border-radius: 6px;
       font-size: 0.68rem;
       border: 1px solid var(--line);
-      background: rgba(6, 15, 22, 0.92);
+      background: rgba(6, 15, 22, 0.94);
     }
 
     .table-wrap {
       overflow: auto;
-      max-height: 320px;
+      max-height: 330px;
       border: 1px solid var(--line);
       border-radius: 10px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-    }
-
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
     th, td {
       padding: 8px 10px;
       border-bottom: 1px solid rgba(173, 207, 198, 0.12);
@@ -264,18 +278,25 @@
       z-index: 1;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      font-size: 0.71rem;
+      font-size: 0.7rem;
+      cursor: pointer;
+      user-select: none;
     }
 
-    .mono {
-      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
-      font-size: 0.78rem;
+    th.sortable::after {
+      content: "  <>";
+      opacity: 0.6;
+      font-size: 0.64rem;
+    }
+
+    tr:hover td {
+      background: rgba(40, 80, 102, 0.22);
     }
 
     .timeline {
       display: grid;
       gap: 8px;
-      max-height: 350px;
+      max-height: 360px;
       overflow: auto;
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -288,6 +309,18 @@
       border-radius: 10px;
       padding: 8px 10px;
       background: rgba(13, 30, 41, 0.74);
+      transition: border-color 170ms ease, transform 170ms ease;
+    }
+
+    .item.clickable { cursor: pointer; }
+    .item.clickable:hover {
+      border-color: rgba(90, 181, 255, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .item.selected {
+      border-color: rgba(55, 197, 180, 0.8);
+      box-shadow: inset 0 0 0 1px rgba(55, 197, 180, 0.28);
     }
 
     .item-head {
@@ -296,17 +329,60 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 5px;
-      font-size: 0.77rem;
+      font-size: 0.76rem;
       color: var(--muted);
     }
 
     .item-title {
       color: var(--ink);
       font-weight: 600;
-      font-size: 0.84rem;
+      font-size: 0.83rem;
       margin-bottom: 4px;
       word-break: break-word;
     }
+
+    .explorer-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .explorer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .detail {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(10, 23, 33, 0.86);
+      max-height: 360px;
+      overflow: auto;
+      font-size: 0.77rem;
+      line-height: 1.4;
+    }
+
+    .detail pre {
+      margin: 6px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #c4ece4;
+      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+      font-size: 0.73rem;
+    }
+
+    .view-switch {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .hidden { display: none; }
 
     .empty {
       color: var(--muted);
@@ -314,13 +390,10 @@
       padding: 8px 4px;
     }
 
-    @media (max-width: 920px) {
-      .split {
-        grid-template-columns: 1fr;
-      }
-      .state-bar-row {
-        grid-template-columns: 90px 1fr 45px;
-      }
+    @media (max-width: 1080px) {
+      .split { grid-template-columns: 1fr; }
+      .explorer-grid { grid-template-columns: 1fr; }
+      .state-bar-row { grid-template-columns: 90px 1fr 45px; }
     }
   </style>
 </head>
@@ -329,12 +402,50 @@
     <div class="hero">
       <div>
         <h1>AEX Backend Playout</h1>
-        <div class="subtitle">Live control-plane + ledger visibility for local daemon activity.</div>
+        <div class="subtitle">Interactive runtime console for execution governance, ledger integrity, and multi-tenant agent operations.</div>
       </div>
       <div class="toolbar">
         <span id="last-updated" class="mono">updating...</span>
+        <select id="refresh-interval" class="select" title="refresh interval">
+          <option value="2000">2s</option>
+          <option value="3000" selected>3s</option>
+          <option value="5000">5s</option>
+          <option value="10000">10s</option>
+        </select>
         <button id="toggle-refresh" class="btn" type="button">Pause</button>
         <button id="refresh-now" class="btn" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <div class="grid full">
+      <div class="card">
+        <h2>Live Filters</h2>
+        <div class="control-grid">
+          <div class="control-cell">
+            <label class="control-label" for="filter-query">Search</label>
+            <input id="filter-query" class="input mono" type="text" placeholder="execution / agent / endpoint">
+          </div>
+          <div class="control-cell">
+            <label class="control-label" for="filter-state">Execution State</label>
+            <select id="filter-state" class="select mono"></select>
+          </div>
+          <div class="control-cell">
+            <label class="control-label" for="filter-agent">Agent</label>
+            <select id="filter-agent" class="select mono"></select>
+          </div>
+          <div class="control-cell">
+            <label class="control-label" for="filter-events">Event Source</label>
+            <select id="filter-events" class="select mono">
+              <option value="all">all</option>
+              <option value="ledger">ledger</option>
+              <option value="compat">compat</option>
+            </select>
+          </div>
+          <div class="control-cell" style="justify-content:end;">
+            <label class="control-label">Actions</label>
+            <button id="clear-filters" class="btn" type="button">Clear Filters</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -353,6 +464,11 @@
         <div class="kpi-label">Spend</div>
         <div id="spent-usd" class="kpi-value">$0.000000</div>
         <div id="exec-total" class="kpi-foot">Executions: -</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Tenancy</div>
+        <div id="tenant-total" class="kpi-value">-</div>
+        <div id="project-total" class="kpi-foot">Projects: -</div>
       </div>
       <div class="card">
         <div class="kpi-label">Reservations</div>
@@ -387,12 +503,12 @@
           <table>
             <thead>
               <tr>
-                <th>Agent</th>
-                <th>Spent</th>
-                <th>Remaining</th>
-                <th>Budget</th>
-                <th>Reserved</th>
-                <th>Burn (1m)</th>
+                <th class="sortable" data-sort="name">Agent</th>
+                <th class="sortable" data-sort="spent_usd">Spent</th>
+                <th class="sortable" data-sort="remaining_usd">Remaining</th>
+                <th class="sortable" data-sort="budget_usd">Budget</th>
+                <th class="sortable" data-sort="reserved_usd">Reserved</th>
+                <th class="sortable" data-sort="burn">Burn (1m)</th>
               </tr>
             </thead>
             <tbody id="agent-rows"></tbody>
@@ -400,27 +516,78 @@
         </div>
       </div>
       <div class="card">
-        <h2>Recent Executions</h2>
-        <div id="execution-timeline" class="timeline"></div>
+        <h2>Execution Explorer</h2>
+        <div class="explorer-meta">
+          <span id="execution-count" class="mono">0 executions</span>
+          <label class="mono"><input id="focus-selected" type="checkbox"> focus events on selected</label>
+        </div>
+        <div class="explorer-grid">
+          <div id="execution-list" class="timeline"></div>
+          <div id="execution-detail" class="detail mono"></div>
+        </div>
       </div>
     </div>
 
     <div class="grid full">
       <div class="card">
         <h2>Ledger & Control Events</h2>
-        <div id="event-timeline" class="timeline"></div>
+        <div class="view-switch">
+          <button id="view-timeline" class="btn active" type="button">Timeline</button>
+          <button id="view-table" class="btn" type="button">Table</button>
+        </div>
+        <div id="events-timeline" class="timeline"></div>
+        <div id="events-table" class="table-wrap hidden">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Agent</th>
+                <th>Execution</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="event-rows"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const POLL_MS = 3000;
-    let polling = true;
-    let timer = null;
+    const state = {
+      pollMs: 3000,
+      polling: true,
+      timer: null,
+      eventView: "timeline",
+      filters: {
+        query: "",
+        execState: "ALL",
+        agent: "ALL",
+        eventSource: "all",
+      },
+      sort: {
+        key: "spent_usd",
+        dir: "desc",
+      },
+      selectedExecutionId: null,
+      raw: null,
+    };
 
     const $ = (id) => document.getElementById(id);
     const safe = (v) => (v === null || v === undefined ? "" : String(v));
+    const lower = (v) => safe(v).toLowerCase();
     const usd = (v) => `$${Number(v || 0).toFixed(6)}`;
+
+    function esc(value) {
+      return safe(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
 
     function pillClass(ok, unknown = false) {
       if (unknown) return "pill warn";
@@ -428,7 +595,14 @@
     }
 
     function setText(id, value) {
-      $(id).textContent = value;
+      const node = $(id);
+      if (node) node.textContent = value;
+    }
+
+    function setStatusMessage(text, error = false) {
+      const msg = $("last-updated");
+      msg.textContent = text;
+      msg.style.color = error ? "#ff9c9c" : "";
     }
 
     function createExecutionStateBars(stateMap) {
@@ -440,6 +614,7 @@
         wrap.innerHTML = '<div class="empty">No execution state data yet.</div>';
         return;
       }
+
       const max = Math.max(...entries.map(([, n]) => Number(n || 0)), 1);
       entries
         .sort((a, b) => Number(b[1]) - Number(a[1]))
@@ -448,9 +623,9 @@
           row.className = "state-bar-row";
           const width = Math.max(2, Math.round((Number(count || 0) / max) * 100));
           row.innerHTML = `
-            <span class="mono">${safe(name)}</span>
+            <span class="mono">${esc(name)}</span>
             <span class="bar-track"><span class="bar-fill" style="width:${width}%"></span></span>
-            <span class="mono">${safe(count)}</span>
+            <span class="mono">${esc(count)}</span>
           `;
           wrap.appendChild(row);
         });
@@ -475,6 +650,36 @@
       });
     }
 
+    function hydrateSelect(selectId, values, selected) {
+      const node = $(selectId);
+      if (!node) return;
+      const old = selected || node.value || "ALL";
+      const options = ["ALL", ...Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))];
+      node.innerHTML = options.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      node.value = options.includes(old) ? old : "ALL";
+    }
+
+    function getFilteredExecutions(data) {
+      const executions = data?.activity?.executions || [];
+      const query = lower(state.filters.query.trim());
+      const wantedState = state.filters.execState;
+      const wantedAgent = state.filters.agent;
+
+      return executions
+        .filter((e) => {
+          if (wantedState !== "ALL" && safe(e.state) !== wantedState) return false;
+          if (wantedAgent !== "ALL" && safe(e.agent) !== wantedAgent) return false;
+          if (!query) return true;
+          const hay = `${safe(e.execution_id)} ${safe(e.agent)} ${safe(e.endpoint)} ${safe(e.state)}`.toLowerCase();
+          return hay.includes(query);
+        })
+        .sort((a, b) => safe(b.updated_at || b.created_at).localeCompare(safe(a.updated_at || a.created_at)));
+    }
+
+    function buildReservationMap(data) {
+      return new Map((data?.activity?.reservations || []).map((r) => [safe(r.execution_id), r]));
+    }
+
     function renderAgents(agents, burnRateWindows) {
       const tbody = $("agent-rows");
       tbody.innerHTML = "";
@@ -482,125 +687,196 @@
         tbody.innerHTML = '<tr><td colspan="6" class="empty">No agents found.</td></tr>';
         return;
       }
-      agents
-        .slice()
-        .sort((a, b) => Number(b.spent_usd || 0) - Number(a.spent_usd || 0))
-        .forEach((a) => {
-          const burn = burnRateWindows?.[a.name]?.["1m"] ?? 0;
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td class="mono">${safe(a.name)}</td>
-            <td>${usd(a.spent_usd)}</td>
-            <td>${usd(a.remaining_usd)}</td>
-            <td>${usd(a.budget_usd)}</td>
-            <td>${usd(a.reserved_usd)}</td>
-            <td class="mono">${safe(burn)}µ/s</td>
-          `;
-          tbody.appendChild(tr);
-        });
+
+      const rows = agents.map((a) => {
+        const burn = burnRateWindows?.[a.name]?.["1m"] ?? 0;
+        return { ...a, burn };
+      });
+
+      const key = state.sort.key;
+      const dir = state.sort.dir === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = a[key] ?? "";
+        const bv = b[key] ?? "";
+        if (typeof av === "string" || typeof bv === "string") {
+          return safe(av).localeCompare(safe(bv)) * dir;
+        }
+        return (Number(av) - Number(bv)) * dir;
+      });
+
+      rows.forEach((a) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${esc(a.name)}</td>
+          <td>${esc(usd(a.spent_usd))}</td>
+          <td>${esc(usd(a.remaining_usd))}</td>
+          <td>${esc(usd(a.budget_usd))}</td>
+          <td>${esc(usd(a.reserved_usd))}</td>
+          <td class="mono">${esc(a.burn)}µ/s</td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
-    function renderExecutionTimeline(executions, reservations) {
-      const wrap = $("execution-timeline");
+    function renderExecutionList(filtered, reservationMap) {
+      const wrap = $("execution-list");
       wrap.innerHTML = "";
+      setText("execution-count", `${filtered.length} execution${filtered.length === 1 ? "" : "s"}`);
 
-      const resMap = new Map((reservations || []).map((r) => [r.execution_id, r]));
-      const rows = (executions || []).slice(0, 28);
-      if (!rows.length) {
-        wrap.innerHTML = '<div class="empty">No execution activity yet.</div>';
+      if (!filtered.length) {
+        wrap.innerHTML = '<div class="empty">No executions match current filters.</div>';
+        state.selectedExecutionId = null;
+        renderExecutionDetail(null, null, []);
         return;
       }
 
-      rows.forEach((e) => {
-        const res = resMap.get(e.execution_id);
-        const state = safe(e.state || "UNKNOWN");
-        const badgeClass = /COMMITTED/.test(state)
+      if (!state.selectedExecutionId || !filtered.some((e) => safe(e.execution_id) === state.selectedExecutionId)) {
+        state.selectedExecutionId = safe(filtered[0].execution_id);
+      }
+
+      filtered.slice(0, 42).forEach((e) => {
+        const execId = safe(e.execution_id);
+        const res = reservationMap.get(execId);
+        const stateName = safe(e.state || "UNKNOWN");
+        const badgeClass = /COMMITTED/.test(stateName)
           ? "ok"
-          : /RELEASED|DENIED|FAILED/.test(state)
+          : /RELEASED|DENIED|FAILED/.test(stateName)
           ? "bad"
           : "warn";
+
         const item = document.createElement("div");
-        item.className = "item";
+        item.className = `item clickable ${execId === state.selectedExecutionId ? "selected" : ""}`;
         item.innerHTML = `
           <div class="item-head">
-            <span class="mono">${safe(e.agent)}</span>
-            <span class="pill ${badgeClass}">${state}</span>
+            <span class="mono">${esc(e.agent)}</span>
+            <span class="pill ${badgeClass}">${esc(stateName)}</span>
           </div>
-          <div class="item-title mono">${safe(e.execution_id).slice(0, 24)}...</div>
-          <div class="mono">endpoint=${safe(e.endpoint)} status=${safe(e.status_code ?? "-")}</div>
-          <div class="mono">reserve=${safe(res?.estimated_micro ?? "-")} actual=${safe(res?.actual_micro ?? "-")}</div>
+          <div class="item-title mono">${esc(execId)}</div>
+          <div class="mono">endpoint=${esc(e.endpoint)} status=${esc(e.status_code ?? "-")}</div>
+          <div class="mono">est=${esc(res?.estimated_micro ?? "-")} actual=${esc(res?.actual_micro ?? "-")}</div>
         `;
+        item.addEventListener("click", () => {
+          state.selectedExecutionId = execId;
+          renderAllFromCache();
+        });
         wrap.appendChild(item);
       });
     }
 
-    function renderEventTimeline(eventLog, compatEvents) {
-      const wrap = $("event-timeline");
-      wrap.innerHTML = "";
-
-      const ledger = (eventLog || []).slice(0, 18).map((e) => ({
-        ts: e.ts,
-        title: `ledger.${safe(e.event_type)}`,
-        sub: `seq=${safe(e.seq)} agent=${safe(e.agent ?? "-")} exec=${safe(e.execution_id ?? "-")}`,
-      }));
-      const compat = (compatEvents || []).slice(0, 14).map((e) => ({
-        ts: e.timestamp,
-        title: `event.${safe(e.action)}`,
-        sub: `id=${safe(e.id)} agent=${safe(e.agent ?? "-")} cost=${safe(e.cost_micro)}µ`,
-      }));
-
-      const combined = [...ledger, ...compat]
-        .sort((a, b) => safe(b.ts).localeCompare(safe(a.ts)))
-        .slice(0, 28);
-
-      if (!combined.length) {
-        wrap.innerHTML = '<div class="empty">No ledger/control events yet.</div>';
+    function renderExecutionDetail(execution, reservation, events) {
+      const panel = $("execution-detail");
+      if (!execution) {
+        panel.innerHTML = '<div class="empty">Select an execution to inspect details.</div>';
         return;
       }
 
-      combined.forEach((e) => {
+      const details = {
+        execution_id: execution.execution_id,
+        agent: execution.agent,
+        endpoint: execution.endpoint,
+        state: execution.state,
+        status_code: execution.status_code,
+        created_at: execution.created_at,
+        updated_at: execution.updated_at,
+        terminal_at: execution.terminal_at,
+        reservation: reservation || null,
+        related_events: events.slice(0, 16),
+      };
+
+      panel.innerHTML = `
+        <div><strong>${esc(execution.execution_id)}</strong></div>
+        <div style="margin-top:6px;color:var(--muted)">Agent: ${esc(execution.agent)} | State: ${esc(execution.state)}</div>
+        <pre>${esc(JSON.stringify(details, null, 2))}</pre>
+      `;
+    }
+
+    function normalizeEvents(data) {
+      const ledger = (data?.activity?.event_log || []).map((e) => ({
+        source: "ledger",
+        ts: e.ts,
+        type: safe(e.event_type),
+        agent: safe(e.agent || "-"),
+        execution_id: safe(e.execution_id || "-"),
+        summary: `seq=${safe(e.seq)} ${safe(e.event_type)}`,
+      }));
+
+      const compat = (data?.activity?.compat_events || []).map((e) => ({
+        source: "compat",
+        ts: e.timestamp,
+        type: safe(e.action),
+        agent: safe(e.agent || "-"),
+        execution_id: "-",
+        summary: `id=${safe(e.id)} cost=${safe(e.cost_micro)}µ`,
+      }));
+
+      return [...ledger, ...compat].sort((a, b) => safe(b.ts).localeCompare(safe(a.ts)));
+    }
+
+    function filterEvents(events) {
+      const src = state.filters.eventSource;
+      const query = lower(state.filters.query.trim());
+      const focusSelected = $("focus-selected").checked && state.selectedExecutionId;
+
+      return events.filter((e) => {
+        if (src !== "all" && e.source !== src) return false;
+        if (focusSelected && safe(e.execution_id) !== state.selectedExecutionId) return false;
+        if (!query) return true;
+        const hay = `${e.type} ${e.agent} ${e.execution_id} ${e.summary}`.toLowerCase();
+        return hay.includes(query);
+      });
+    }
+
+    function renderEvents(events) {
+      const timeline = $("events-timeline");
+      const tbody = $("event-rows");
+      timeline.innerHTML = "";
+      tbody.innerHTML = "";
+
+      if (!events.length) {
+        timeline.innerHTML = '<div class="empty">No events match current filters.</div>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No events match current filters.</td></tr>';
+        return;
+      }
+
+      events.slice(0, 48).forEach((e) => {
         const item = document.createElement("div");
         item.className = "item";
         item.innerHTML = `
           <div class="item-head">
-            <span class="mono">${safe(e.ts)}</span>
+            <span class="mono">${esc(e.ts)}</span>
+            <span class="pill ${e.source === "ledger" ? "ok" : "warn"}">${esc(e.source)}</span>
           </div>
-          <div class="item-title mono">${safe(e.title)}</div>
-          <div class="mono">${safe(e.sub)}</div>
+          <div class="item-title mono">${esc(e.type)}</div>
+          <div class="mono">agent=${esc(e.agent)} exec=${esc(e.execution_id)}</div>
+          <div class="mono">${esc(e.summary)}</div>
         `;
-        wrap.appendChild(item);
+        timeline.appendChild(item);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${esc(e.ts)}</td>
+          <td>${esc(e.source)}</td>
+          <td class="mono">${esc(e.type)}</td>
+          <td class="mono">${esc(e.agent)}</td>
+          <td class="mono">${esc(e.execution_id)}</td>
+          <td class="mono">${esc(e.summary)}</td>
+        `;
+        tbody.appendChild(tr);
       });
     }
 
-    async function loadData() {
-      const [healthRes, metricsRes, replayRes, activityRes] = await Promise.all([
-        fetch("/health"),
-        fetch("/metrics"),
-        fetch("/admin/replay"),
-        fetch("/admin/activity?limit=60"),
-      ]);
+    function renderAllFromCache() {
+      if (!state.raw) return;
+      const { health, metrics, replay, activity } = state.raw;
 
-      if (!healthRes.ok || !metricsRes.ok || !replayRes.ok || !activityRes.ok) {
-        throw new Error("Dashboard fetch failed");
-      }
-
-      const health = await healthRes.json();
-      const metrics = await metricsRes.json();
-      const replay = await replayRes.json();
-      const activity = await activityRes.json();
-      return { health, metrics, replay, activity };
-    }
-
-    function paint({ health, metrics, replay, activity }) {
       setText("daemon-status", safe(health.status || "unknown").toUpperCase());
       setText("daemon-version", `version=${safe(health.version || "?")}`);
       setText("total-requests", safe(metrics.total_requests ?? 0));
-      setText(
-        "total-denials",
-        `Denied budget=${safe(metrics.total_denied_budget ?? 0)} rate=${safe(metrics.total_denied_rate_limit ?? 0)}`
-      );
+      setText("total-denials", `Denied budget=${safe(metrics.total_denied_budget ?? 0)} rate=${safe(metrics.total_denied_rate_limit ?? 0)}`);
       setText("spent-usd", usd(metrics.total_spent_global_usd));
       setText("exec-total", `Executions: ${safe(metrics.total_executions ?? 0)}`);
+      setText("tenant-total", safe(metrics.total_tenants ?? 0));
+      setText("project-total", `Projects: ${safe(metrics.total_projects ?? 0)}`);
       setText("stale-res", safe(metrics.stale_reservations ?? 0));
       setText("active-proc", `Active processes: ${safe(metrics.active_processes ?? 0)}`);
 
@@ -612,39 +888,152 @@
       $("replay-pill").className = pillClass(replayOk);
       $("replay-pill").textContent = replayOk ? "replay ok" : "replay fail";
 
-      createExecutionStateBars(metrics.execution_states || activity.execution_state_counts);
+      createExecutionStateBars(metrics.execution_states || activity.execution_state_counts || {});
       createHistogram(metrics.usage_histogram || []);
+
+      hydrateSelect("filter-state", Object.keys(metrics.execution_states || {}), state.filters.execState);
+      hydrateSelect("filter-agent", (metrics.agents || []).map((a) => a.name), state.filters.agent);
+      state.filters.execState = $("filter-state").value;
+      state.filters.agent = $("filter-agent").value;
+
       renderAgents(metrics.agents || [], metrics.burn_rate_windows || {});
-      renderExecutionTimeline(activity.executions || [], activity.reservations || []);
-      renderEventTimeline(activity.event_log || [], activity.compat_events || []);
-      setText("last-updated", `last update ${new Date().toLocaleTimeString()}`);
+
+      const filteredExecutions = getFilteredExecutions(state.raw);
+      const reservationMap = buildReservationMap(state.raw);
+      renderExecutionList(filteredExecutions, reservationMap);
+
+      const selected = filteredExecutions.find((e) => safe(e.execution_id) === state.selectedExecutionId) || null;
+      const selectedReservation = selected ? reservationMap.get(safe(selected.execution_id)) : null;
+      const selectedEvents = (activity.event_log || []).filter((e) => safe(e.execution_id) === safe(state.selectedExecutionId));
+      renderExecutionDetail(selected, selectedReservation, selectedEvents);
+
+      const mergedEvents = normalizeEvents(state.raw);
+      renderEvents(filterEvents(mergedEvents));
+    }
+
+    async function loadData() {
+      const res = await fetch("/admin/dashboard/data?limit=120");
+      if (!res.ok) {
+        throw new Error("Dashboard fetch failed");
+      }
+      return await res.json();
     }
 
     async function tick() {
       try {
         const data = await loadData();
-        paint(data);
+        state.raw = data;
+        renderAllFromCache();
+        const critical = Number(data?.alert_summary?.critical || 0);
+        const warning = Number(data?.alert_summary?.warning || 0);
+        const suffix = critical > 0
+          ? `alerts c=${critical} w=${warning}`
+          : `alerts w=${warning}`;
+        setStatusMessage(`last update ${new Date().toLocaleTimeString()} · ${suffix}`, critical > 0);
       } catch (err) {
-        setText("last-updated", `update error ${new Date().toLocaleTimeString()}`);
+        setStatusMessage(`update error ${new Date().toLocaleTimeString()}`, true);
       }
     }
 
-    function startPolling() {
-      if (timer) clearInterval(timer);
-      timer = setInterval(() => {
-        if (polling) tick();
-      }, POLL_MS);
+    function restartPolling() {
+      if (state.timer) clearInterval(state.timer);
+      state.timer = setInterval(() => {
+        if (state.polling && !document.hidden) tick();
+      }, state.pollMs);
     }
 
-    $("toggle-refresh").addEventListener("click", () => {
-      polling = !polling;
-      $("toggle-refresh").textContent = polling ? "Pause" : "Resume";
-      if (polling) tick();
-    });
-    $("refresh-now").addEventListener("click", () => tick());
+    function bindControls() {
+      $("toggle-refresh").addEventListener("click", () => {
+        state.polling = !state.polling;
+        $("toggle-refresh").textContent = state.polling ? "Pause" : "Resume";
+        if (state.polling) tick();
+      });
 
+      $("refresh-now").addEventListener("click", () => tick());
+
+      $("refresh-interval").addEventListener("change", (e) => {
+        state.pollMs = Number(e.target.value || 3000);
+        restartPolling();
+      });
+
+      $("filter-query").addEventListener("input", (e) => {
+        state.filters.query = e.target.value || "";
+        renderAllFromCache();
+      });
+
+      $("filter-state").addEventListener("change", (e) => {
+        state.filters.execState = e.target.value;
+        renderAllFromCache();
+      });
+
+      $("filter-agent").addEventListener("change", (e) => {
+        state.filters.agent = e.target.value;
+        renderAllFromCache();
+      });
+
+      $("filter-events").addEventListener("change", (e) => {
+        state.filters.eventSource = e.target.value;
+        renderAllFromCache();
+      });
+
+      $("focus-selected").addEventListener("change", () => renderAllFromCache());
+
+      $("clear-filters").addEventListener("click", () => {
+        state.filters.query = "";
+        state.filters.execState = "ALL";
+        state.filters.agent = "ALL";
+        state.filters.eventSource = "all";
+        $("filter-query").value = "";
+        $("filter-events").value = "all";
+        $("focus-selected").checked = false;
+        renderAllFromCache();
+      });
+
+      document.querySelectorAll("th.sortable").forEach((th) => {
+        th.addEventListener("click", () => {
+          const key = th.dataset.sort;
+          if (!key) return;
+          if (state.sort.key === key) {
+            state.sort.dir = state.sort.dir === "asc" ? "desc" : "asc";
+          } else {
+            state.sort.key = key;
+            state.sort.dir = key === "name" ? "asc" : "desc";
+          }
+          renderAllFromCache();
+        });
+      });
+
+      $("view-timeline").addEventListener("click", () => {
+        state.eventView = "timeline";
+        $("view-timeline").classList.add("active");
+        $("view-table").classList.remove("active");
+        $("events-timeline").classList.remove("hidden");
+        $("events-table").classList.add("hidden");
+      });
+
+      $("view-table").addEventListener("click", () => {
+        state.eventView = "table";
+        $("view-table").classList.add("active");
+        $("view-timeline").classList.remove("active");
+        $("events-table").classList.remove("hidden");
+        $("events-timeline").classList.add("hidden");
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.target && ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+        if (e.key.toLowerCase() === "r") {
+          tick();
+        }
+        if (e.code === "Space") {
+          e.preventDefault();
+          $("toggle-refresh").click();
+        }
+      });
+    }
+
+    bindControls();
     tick();
-    startPolling();
+    restartPolling();
   </script>
 </body>
 </html>

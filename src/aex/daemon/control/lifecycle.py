@@ -31,17 +31,6 @@ class LifecycleTransition:
     reason: str
 
 
-def get_agent_state(agent: str) -> str:
-    with get_db_connection() as conn:
-        row = conn.execute(
-            "SELECT lifecycle_state FROM agents WHERE name = ?",
-            (agent,),
-        ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return row["lifecycle_state"] or "READY"
-
-
 def ensure_agent_can_execute(agent_info: dict) -> None:
     state = agent_info.get("lifecycle_state") or "READY"
     if state != "READY":

@@ -1,22 +1,32 @@
 """Daemon lifecycle commands: start, stop, status."""
 
-import os
 import sys
 import signal
 import subprocess
+import os
 
 import typer
 
-from . import daemon_app, console, AEX_DIR, PID_FILE, DB_PATH, LOG_DIR, CONFIG_DIR, get_daemon_pid
+from . import daemon_app, console, AEX_DIR, PID_FILE, LOG_DIR, CONFIG_DIR, get_daemon_pid
+from ..daemon.db import init_db
 
 
 @daemon_app.command("start")
 def start_daemon(port: int = 9000, reload: bool = False):
     """Start the AEX daemon."""
-    if not AEX_DIR.exists():
-        console.print("[yellow]AEX not initialized. Running init...[/yellow]")
-        from . import init_aex
-        init_aex()
+    if not (os.getenv("AEX_PG_DSN") or "").strip():
+        console.print("[red]AEX_PG_DSN is required before starting daemon.[/red]")
+        raise typer.Exit(1)
+
+    AEX_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    try:
+        init_db()
+    except Exception as exc:
+        console.print(f"[red]Database init failed, daemon not started: {exc}[/red]")
+        raise typer.Exit(1)
 
     pid = get_daemon_pid()
     if pid:
@@ -31,7 +41,6 @@ def start_daemon(port: int = 9000, reload: bool = False):
     console.print(f"[green]Starting AEX daemon on port {port}...[/green]")
 
     env = os.environ.copy()
-    env["AEX_DB_PATH"] = str(DB_PATH)
     env["AEX_LOG_DIR"] = str(LOG_DIR)
     env["AEX_CONFIG_DIR"] = str(CONFIG_DIR)
 
@@ -81,7 +90,7 @@ def status_daemon():
             os.kill(pid, 0)
             console.print(f"[green]Daemon is running (PID {pid})[/green]")
             console.print(f"Configuration: {CONFIG_DIR}")
-            console.print(f"Database: {DB_PATH}")
+            console.print("Database: PostgreSQL (AEX_PG_DSN)")
             return
         except ProcessLookupError:
             pass

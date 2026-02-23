@@ -28,6 +28,9 @@ class AdmissionResult:
     policy: PolicyDecision
     request_body: dict[str, Any]
     estimated_cost_micro: int
+    tenant_id: str
+    project_id: str
+    idempotent_replay: bool = False
     cached_status_code: int | None = None
     cached_response_body: dict | None = None
     cached_error_body: dict | None = None
@@ -115,6 +118,7 @@ async def admit_request(
     body: dict[str, Any],
     headers: dict[str, str],
     agent_info: dict,
+    explicit_execution_id: str | None = None,
 ) -> AdmissionResult:
     """Execute full admission pipeline and reserve budget."""
     agent = agent_info["name"]
@@ -134,7 +138,11 @@ async def admit_request(
         body=body,
         idempotency_key=headers.get("idempotency-key"),
         step_id=headers.get("x-aex-step-id"),
+        explicit_execution_id=explicit_execution_id,
     )
+
+    tenant_id = (agent_info.get("tenant_id") or "default").strip() or "default"
+    project_id = (agent_info.get("project_id") or "default").strip() or "default"
 
     cached = get_execution_cache(execution_id)
     if cached and cached.state in {"COMMITTED", "DENIED", "RELEASED", "FAILED"}:
@@ -145,6 +153,9 @@ async def admit_request(
             policy=PolicyDecision(True, None, [], {}, "cache", []),
             request_body=body,
             estimated_cost_micro=0,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            idempotent_replay=True,
             cached_status_code=cached.status_code,
             cached_response_body=cached.response_body,
             cached_error_body=cached.error_body,
@@ -159,6 +170,9 @@ async def admit_request(
                 policy=PolicyDecision(True, None, [], {}, "cache", []),
                 request_body=body,
                 estimated_cost_micro=0,
+                tenant_id=tenant_id,
+                project_id=project_id,
+                idempotent_replay=True,
                 cached_status_code=awaited.status_code,
                 cached_response_body=awaited.response_body,
                 cached_error_body=awaited.error_body,
@@ -168,7 +182,7 @@ async def admit_request(
             detail=f"Execution already in progress for idempotency key ({execution_id})",
         )
 
-    check_rate_limit(agent)
+    check_rate_limit(agent, tenant_id=tenant_id, project_id=project_id)
 
     policy = evaluate_request(
         agent_caps=agent_info,
@@ -184,12 +198,16 @@ async def admit_request(
                 conn,
                 execution_id=execution_id,
                 agent=agent,
+                tenant_id=tenant_id,
+                project_id=project_id,
                 event_type="policy.violation",
                 payload={"reason": policy.reason, "endpoint": endpoint},
             )
             append_compat_event(
                 conn,
                 agent=agent,
+                tenant_id=tenant_id,
+                project_id=project_id,
                 action="POLICY_VIOLATION",
                 cost_micro=0,
                 metadata={"reason": policy.reason, "endpoint": endpoint},
@@ -203,6 +221,8 @@ async def admit_request(
 
     decision = reserve_budget_v2(
         agent=agent,
+        tenant_id=tenant_id,
+        project_id=project_id,
         execution_id=execution_id,
         endpoint=endpoint,
         request_hash=request_hash,
@@ -221,6 +241,9 @@ async def admit_request(
                 policy=policy,
                 request_body=patched_body,
                 estimated_cost_micro=estimated_cost,
+                tenant_id=tenant_id,
+                project_id=project_id,
+                idempotent_replay=True,
                 cached_status_code=awaited.status_code,
                 cached_response_body=awaited.response_body,
                 cached_error_body=awaited.error_body,
@@ -237,6 +260,9 @@ async def admit_request(
             policy=policy,
             request_body=patched_body,
             estimated_cost_micro=estimated_cost,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            idempotent_replay=True,
             cached_status_code=decision.status_code,
             cached_response_body=decision.response_body,
             cached_error_body=decision.error_body,
@@ -249,4 +275,6 @@ async def admit_request(
         policy=policy,
         request_body=patched_body,
         estimated_cost_micro=estimated_cost,
+        tenant_id=tenant_id,
+        project_id=project_id,
     )

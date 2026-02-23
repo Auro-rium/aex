@@ -1,18 +1,15 @@
 """Tool plugin commands: install, list, enable/disable."""
 
-import os
-
 import typer
 from rich.table import Table
 
-from . import plugin_app, console, DB_PATH
+from . import plugin_app, console
 from ..daemon.sandbox import install_plugin, list_plugins, set_plugin_enabled
 
 
 @plugin_app.command("install")
 def install(manifest: str, package: str):
     """Install (register) a tool plugin by manifest + package path."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         info = install_plugin(manifest, package)
         console.print(
@@ -26,7 +23,6 @@ def install(manifest: str, package: str):
 @plugin_app.command("list")
 def list_all():
     """List registered tool plugins."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         rows = list_plugins()
         table = Table(title="AEX Tool Plugins")
@@ -52,7 +48,6 @@ def list_all():
 @plugin_app.command("enable")
 def enable(name: str):
     """Enable a registered plugin."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         set_plugin_enabled(name, True)
         console.print(f"[green]Enabled plugin '{name}'[/green]")
@@ -63,7 +58,6 @@ def enable(name: str):
 @plugin_app.command("disable")
 def disable(name: str):
     """Disable a registered plugin."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         set_plugin_enabled(name, False)
         console.print(f"[green]Disabled plugin '{name}'[/green]")

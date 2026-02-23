@@ -1,0 +1,41 @@
+app = "aex-kernel"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "9000"
+  AEX_LOG_LEVEL = "INFO"
+  AEX_ALERT_STALE_RESERVATIONS = "20"
+  AEX_ALERT_NON_TERMINAL_EXECUTIONS = "50"
+  AEX_ALERT_DENIED_RATIO = "0.50"
+  AEX_ALERT_PROVIDER_429 = "30"
+  AEX_ALERT_WINDOW_MINUTES = "10"
+
+[http_service]
+  internal_port = 9000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "20s"
+    method = "GET"
+    timeout = "5s"
+    path = "/ready"
+
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

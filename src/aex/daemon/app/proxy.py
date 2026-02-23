@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ..auth import get_agent_from_token
-from ..control import admit_request
+from ..control import admit_request, resolve_scope
 from ..control.lifecycle import ensure_agent_can_execute
 from ..db import get_db_connection
 from ..ledger import (
@@ -173,6 +173,8 @@ async def _proxy_endpoint(request: Request, agent_info: dict, endpoint: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
+    resolve_scope({k.lower(): v for k, v in request.headers.items()}, agent_info)
+
     if endpoint.endswith("/chat/completions") and not isinstance(body.get("messages"), list):
         raise HTTPException(status_code=400, detail="'messages' must be a non-empty list")
 
@@ -324,6 +326,7 @@ async def proxy_tool_execute(
         raise HTTPException(status_code=403, detail="Read-only token cannot execute tools")
 
     ensure_agent_can_execute(agent_info)
+    scope = resolve_scope({k.lower(): v for k, v in request.headers.items()}, agent_info)
     agent = agent_info["name"]
     tool_name = body.tool_name.strip()
     if not tool_name:
@@ -360,6 +363,8 @@ async def proxy_tool_execute(
 
     reservation = reserve_budget_v2(
         agent=agent,
+        tenant_id=scope.tenant_id,
+        project_id=scope.project_id,
         execution_id=execution_id,
         endpoint="/v1/tools/execute",
         request_hash=request_hash,
@@ -425,12 +430,16 @@ async def proxy_tool_execute(
                 conn,
                 execution_id=execution_id,
                 agent=agent,
+                tenant_id=scope.tenant_id,
+                project_id=scope.project_id,
                 event_type="tool.exec.denied",
                 payload={"tool_name": tool_name, "error": str(exc)},
             )
             append_compat_event(
                 conn,
                 agent=agent,
+                tenant_id=scope.tenant_id,
+                project_id=scope.project_id,
                 action="TOOL_EXEC_DENIED",
                 metadata={"tool_name": tool_name, "error": str(exc)},
             )
@@ -460,12 +469,16 @@ async def proxy_tool_execute(
             conn,
             execution_id=execution_id,
             agent=agent,
+            tenant_id=scope.tenant_id,
+            project_id=scope.project_id,
             event_type="tool.exec",
             payload={"tool_name": tool_name, "cost_micro": tool_cost_micro},
         )
         append_compat_event(
             conn,
             agent=agent,
+            tenant_id=scope.tenant_id,
+            project_id=scope.project_id,
             action="TOOL_EXEC",
             metadata={"tool_name": tool_name, "execution_id": execution_id, "cost_micro": tool_cost_micro},
         )

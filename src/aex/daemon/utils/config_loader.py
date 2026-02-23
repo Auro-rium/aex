@@ -48,7 +48,7 @@ class AEXConfig(BaseModel):
 
 class ConfigLoader:
     def __init__(self):
-        self.config_dir = Path(os.getenv("AEX_CONFIG_DIR", os.path.expanduser("~/.aex/config")))
+        self.config_dir = Path(os.getenv("AEX_CONFIG_DIR", "/etc/aex/config"))
         self.config_file = self.config_dir / "models.yaml"
         self.config: Optional[AEXConfig] = None
 

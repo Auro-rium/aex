@@ -1,7 +1,7 @@
 """
 AEX Formal Invariant Layer — Database integrity and lifecycle verification.
 
-All checks are deterministic queries against the SQLite database.
+All checks are deterministic queries against the PostgreSQL database.
 No mutations. No side effects.
 """
 

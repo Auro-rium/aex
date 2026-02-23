@@ -6,7 +6,7 @@ from pathlib import Path
 from rich.console import Console
 
 from .. import __version__
-from ..daemon.db import get_db_connection, init_db
+from ..daemon.db import init_db
 
 # ── Shared state ────────────────────────────────────────────────────────────
 
@@ -16,19 +16,22 @@ console = Console()
 # Sub-command groups
 daemon_app = typer.Typer()
 agent_app = typer.Typer()
+tenant_app = typer.Typer()
 models_app = typer.Typer()
 plugin_app = typer.Typer()
+migrate_app = typer.Typer()
 
 app.add_typer(daemon_app, name="daemon", help="Manage the AEX daemon process")
 app.add_typer(agent_app, name="agent", help="Manage AI agents and budgets")
+app.add_typer(tenant_app, name="tenant", help="Manage tenants and projects")
 app.add_typer(models_app, name="models", help="Manage model configuration")
 app.add_typer(plugin_app, name="plugin", help="Manage sandboxed tool plugins")
+app.add_typer(migrate_app, name="migrate", help="Migration snapshot/apply/rollback operations")
 
 # ── Path constants ──────────────────────────────────────────────────────────
 
 AEX_DIR = Path.home() / ".aex"
 PID_FILE = AEX_DIR / "aex.pid"
-DB_PATH = AEX_DIR / "aex.db"
 LOG_DIR = AEX_DIR / "logs"
 CONFIG_DIR = AEX_DIR / "config"
 MODELS_CONFIG_FILE = CONFIG_DIR / "models.yaml"
@@ -49,8 +52,14 @@ def get_daemon_pid():
 
 @app.command("init")
 def init_aex():
-    """Initialize AEX environment in ~/.aex"""
-    console.print(f"[bold]Initializing AEX in {AEX_DIR}...[/bold]")
+    """Initialize AEX schema and local runtime folders."""
+    dsn = (os.getenv("AEX_PG_DSN") or "").strip()
+    if not dsn:
+        console.print("[red]AEX_PG_DSN is required. Example:[/red]")
+        console.print("  export AEX_PG_DSN='postgresql://aex:aex@127.0.0.1:5432/aex'")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Initializing AEX runtime in {AEX_DIR} (PostgreSQL backend)...[/bold]")
 
     AEX_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,35 +108,22 @@ models:
 """
         MODELS_CONFIG_FILE.write_text(default_yaml)
 
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
     try:
         init_db()
         console.print("[green]Database initialized.[/green]")
     except Exception as e:
         console.print(f"[red]Failed to initialize database: {e}[/red]")
+        raise typer.Exit(1)
 
-    console.print("[green]AEX initialized successfully.[/green]")
-
-    env_file = AEX_DIR / ".env"
-    if not env_file.exists():
-        console.print("[yellow]Provider API keys are required to route requests.[/yellow]")
-        groq_key = typer.prompt("Enter your Groq API key (optional, press Enter to skip)", default="", hide_input=True)
-        openai_key = typer.prompt("Enter your OpenAI API key (optional, press Enter to skip)", default="", hide_input=True)
-        
-        env_content = "# Provider API Keys\n"
-        if groq_key: 
-            env_content += f"GROQ_API_KEY={groq_key}\n"
-        if openai_key:
-            env_content += f"OPENAI_API_KEY={openai_key}\n"
-            
-        env_file.write_text(env_content)
-        console.print(f"[green]Saved API keys to {env_file}[/green]")
+    console.print("[green]AEX initialized successfully (PostgreSQL).[/green]")
 
 
 # ── Register submodule commands (import triggers decorator registration) ────
 
 from . import daemon_cmds   # noqa: E402, F401
 from . import agent_cmds    # noqa: E402, F401
+from . import tenant_cmds   # noqa: E402, F401
 from . import ops_cmds      # noqa: E402, F401
 from . import plugin_cmds   # noqa: E402, F401
 from . import replay_cmds   # noqa: E402, F401
+from . import migrate_cmds  # noqa: E402, F401

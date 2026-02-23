@@ -1,0 +1,25 @@
+version: 1
+
+providers:
+  groq:
+    base_url: https://api.groq.com/openai/v1
+    type: openai_compatible
+  openai:
+    base_url: https://api.openai.com
+    type: openai_compatible
+
+default_model: gpt-oss-20b
+
+models:
+  gpt-oss-20b:
+    provider: groq
+    provider_model: llama-3.1-8b-instant
+    pricing:
+      input_micro: 50
+      output_micro: 100
+    limits:
+      max_tokens: 8192
+    capabilities:
+      reasoning: true
+      tools: true
+      vision: false

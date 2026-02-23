@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aex
+      POSTGRES_USER: aex
+      POSTGRES_PASSWORD: aex
+    volumes:
+      - aex_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aex -d aex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${AEX_POSTGRES_HOST_PORT:-5433}:5432"
+
+  aex:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AEX_PG_DSN: postgresql://aex:aex@postgres:5432/aex
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AEX_ALERT_STALE_RESERVATIONS: 20
+      AEX_ALERT_NON_TERMINAL_EXECUTIONS: 50
+      AEX_ALERT_DENIED_RATIO: 0.50
+      AEX_ALERT_PROVIDER_429: 30
+      AEX_ALERT_WINDOW_MINUTES: 10
+    ports:
+      - "${AEX_HTTP_PORT:-9000}:9000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9000/ready', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aex_pgdata:

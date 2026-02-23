@@ -1,9 +1,7 @@
 """Replay/audit commands for deterministic ledger verification."""
-
-import os
 import typer
 
-from . import app, console, DB_PATH
+from . import app, console
 from ..daemon.ledger import replay_ledger_balances, verify_hash_chain
 from ..daemon.db import get_db_connection
 
@@ -14,8 +12,6 @@ def replay(
     verify: bool = typer.Option(False, "--verify", help="Verify hash chain and replayed balances"),
 ):
     """Run deterministic replay checks."""
-    os.environ["AEX_DB_PATH"] = str(DB_PATH)
-
     if execution_id:
         try:
             with get_db_connection() as conn:

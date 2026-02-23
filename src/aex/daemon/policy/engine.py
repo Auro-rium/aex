@@ -28,7 +28,7 @@ class PolicyDecision:
 
 
 def _policy_plugin_dir() -> Path:
-    return Path(os.getenv("AEX_POLICY_PLUGIN_DIR", os.path.expanduser("~/.aex/policies")))
+    return Path(os.getenv("AEX_POLICY_PLUGIN_DIR", "/etc/aex/policies"))
 
 
 def _load_plugins() -> list[tuple[str, ModuleType]]:
