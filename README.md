@@ -1,6 +1,7 @@
-# AEX v2.0 - Auto Execution Kernel
+# AEX v2.0 - Auto Execution Kernel (Local Dev Profile)
 
 AEX v2.0 is a local-first governance kernel for agent execution with deterministic accounting.
+This profile is intended for local development users.
 
 Core guarantees:
 - budget reserve/commit/release lifecycle per `execution_id`
@@ -60,9 +61,15 @@ On daemon startup:
 - load model/provider config
 - reconcile incomplete executions (release stale reservations, fail broken non-terminal flows)
 
-## Dashboard
+## Dashboard (Simple Local Frontend)
 
-Live playout dashboard:
+v2.0 ships with a simple local frontend connected to backend endpoints:
+- `GET /health`
+- `GET /metrics`
+- `GET /admin/replay`
+- `GET /admin/activity`
+
+Open:
 - `http://127.0.0.1:9000/dashboard`
 
 ## Quick Start
