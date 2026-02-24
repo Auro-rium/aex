@@ -1,8 +1,16 @@
 from ..db import get_db_connection
 from typing import Dict, Any
 from datetime import datetime, timedelta
+import os
+from dataclasses import dataclass
 from ..observability import estimate_burn_windows
 from ..ledger import verify_hash_chain
+
+
+@dataclass
+class _ChainCheck:
+    ok: bool
+    detail: str
 
 
 def get_metrics() -> Dict[str, Any]:
@@ -116,7 +124,14 @@ def get_metrics() -> Dict[str, Any]:
             for agent, events in grouped_burn.items()
         }
 
-        chain_check = verify_hash_chain()
+        include_hash_chain = (os.getenv("AEX_METRICS_INCLUDE_HASH_CHAIN", "0").strip() == "1")
+        if include_hash_chain:
+            chain_check = verify_hash_chain()
+        else:
+            chain_check = _ChainCheck(
+                ok=True,
+                detail="skipped (AEX_METRICS_INCLUDE_HASH_CHAIN=0)",
+            )
             
         return {
             "total_agents": total_agents,

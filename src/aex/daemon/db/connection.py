@@ -30,6 +30,16 @@ def get_db_path() -> str:
     return dsn
 
 
+def _int_env(name: str, default: int, *, minimum: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return max(minimum, int(raw))
+    except Exception:
+        return default
+
+
 def _normalize_sql(query: str) -> str:
     q = query
     if "BEGIN IMMEDIATE" in q:
@@ -153,6 +163,9 @@ class CompatConnection:
 def get_db_connection():
     """Yield a PostgreSQL connection wrapper compatible with existing callsites."""
     dsn = get_db_dsn()
+    connect_timeout_seconds = _int_env("AEX_DB_CONNECT_TIMEOUT_SECONDS", 5, minimum=1)
+    statement_timeout_ms = _int_env("AEX_DB_STATEMENT_TIMEOUT_MS", 20_000, minimum=1_000)
+    lock_timeout_ms = _int_env("AEX_DB_LOCK_TIMEOUT_MS", 5_000, minimum=250)
     try:
         import psycopg
         from psycopg.rows import dict_row
@@ -161,7 +174,17 @@ def get_db_connection():
             "psycopg is required for PostgreSQL backend. Install with: pip install \"psycopg[binary]>=3.2\""
         ) from exc
 
-    conn = psycopg.connect(dsn, row_factory=dict_row)
+    conn = psycopg.connect(
+        dsn,
+        row_factory=dict_row,
+        connect_timeout=connect_timeout_seconds,
+    )
+    with conn.cursor() as cur:
+        # PostgreSQL utility SET does not reliably accept bind parameters across drivers.
+        # Values are sanitized as bounded integers above.
+        cur.execute(f"SET statement_timeout TO {statement_timeout_ms}")
+        cur.execute(f"SET lock_timeout TO {lock_timeout_ms}")
+
     wrapped = CompatConnection(conn, dict_row)
     try:
         yield wrapped

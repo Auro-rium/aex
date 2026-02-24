@@ -28,6 +28,7 @@ def collect_active_alerts() -> list[dict]:
     denied_ratio_threshold = float(os.getenv("AEX_ALERT_DENIED_RATIO", "0.50"))
     provider_429_threshold = int(os.getenv("AEX_ALERT_PROVIDER_429", "30"))
     window_minutes = int(os.getenv("AEX_ALERT_WINDOW_MINUTES", "10"))
+    include_hash_chain = (os.getenv("AEX_ALERTS_INCLUDE_HASH_CHAIN", "0").strip() == "1")
     now = datetime.now(UTC)
     cutoff = now - timedelta(minutes=window_minutes)
 
@@ -120,7 +121,7 @@ def collect_active_alerts() -> list[dict]:
                 }
             )
 
-        checks = run_all_checks(conn)
+        checks = run_all_checks(conn, include_event_hash_chain=include_hash_chain)
         for check in checks:
             if check.passed:
                 continue

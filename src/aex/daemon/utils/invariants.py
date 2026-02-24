@@ -162,14 +162,16 @@ def check_event_hash_chain() -> InvariantResult:
     )
 
 
-def run_all_checks(conn) -> list[InvariantResult]:
+def run_all_checks(conn, *, include_event_hash_chain: bool = True) -> list[InvariantResult]:
     """Run all invariant checks and return results."""
-    return [
+    checks = [
         check_spent_within_budget(conn),
         check_no_negative_values(conn),
         check_no_orphaned_reservations(conn),
         check_event_log_integrity(conn),
         check_spent_matches_events(conn),
         check_reserved_matches_reservations(conn),
-        check_event_hash_chain(),
     ]
+    if include_event_hash_chain:
+        checks.append(check_event_hash_chain())
+    return checks

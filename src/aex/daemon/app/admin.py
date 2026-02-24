@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -18,18 +19,23 @@ router = APIRouter()
 @router.get("/admin/activity")
 async def activity_feed_endpoint(limit: int = Query(default=40, ge=10, le=200)):
     """Return recent backend activity for the local dashboard UI."""
-    return activity_snapshot(limit=limit)
+    return await run_in_threadpool(activity_snapshot, limit)
 
 
 @router.get("/admin/dashboard/data")
-async def dashboard_data_endpoint(limit: int = Query(default=120, ge=20, le=500)):
+async def dashboard_data_endpoint(
+    limit: int = Query(default=120, ge=20, le=500),
+    include_replay: bool = Query(default=False),
+):
     """Backend-oriented payload for the dashboard UI."""
-    return dashboard_payload(limit=limit)
+    return await run_in_threadpool(
+        lambda: dashboard_payload(limit=limit, include_deep_replay=include_replay)
+    )
 
 
 @router.get("/admin/alerts")
 async def alerts_endpoint():
-    alerts = collect_active_alerts()
+    alerts = await run_in_threadpool(collect_active_alerts)
     return {"alerts": alerts, "summary": summarize_alerts(alerts)}
 
 
@@ -45,7 +51,9 @@ async def reload_config_endpoint():
 
 @router.get("/admin/replay")
 async def replay_audit_endpoint():
-    payload = dashboard_payload(limit=40)
+    payload = await run_in_threadpool(
+        lambda: dashboard_payload(limit=40, include_deep_replay=True)
+    )
     return payload["replay"]
 
 
@@ -65,11 +73,11 @@ async def health():
 
 @router.get("/ready")
 async def ready():
-    ready_ok, report = readiness_report()
+    ready_ok, report = await run_in_threadpool(readiness_report)
     status_code = 200 if ready_ok else 503
     return JSONResponse(content=report, status_code=status_code)
 
 
 @router.get("/metrics")
 async def metrics_endpoint():
-    return get_metrics()
+    return await run_in_threadpool(get_metrics)

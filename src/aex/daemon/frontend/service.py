@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import threading
+import time
 
 from ..db import get_db_connection
 from ..ledger import replay_ledger_balances, verify_hash_chain
@@ -72,9 +75,51 @@ def activity_snapshot(limit: int = 40) -> dict:
     }
 
 
-def dashboard_payload(limit: int = 120) -> dict:
-    chain = verify_hash_chain()
-    replay = replay_ledger_balances()
+_DEEP_REPLAY_CACHE: dict[str, object] = {
+    "expires_at": 0.0,
+    "payload": {
+        "hash_chain_ok": None,
+        "hash_chain_detail": "not computed",
+        "balance_replay_ok": None,
+        "balance_replay_detail": "not computed",
+    },
+}
+_DEEP_REPLAY_LOCK = threading.Lock()
+
+
+def _deep_replay_payload() -> dict:
+    ttl_seconds = max(5, int((os.getenv("AEX_DASHBOARD_REPLAY_CACHE_SECONDS") or "60").strip() or "60"))
+    now = time.monotonic()
+
+    with _DEEP_REPLAY_LOCK:
+        expires_at = float(_DEEP_REPLAY_CACHE.get("expires_at", 0.0) or 0.0)
+        if now < expires_at:
+            return dict(_DEEP_REPLAY_CACHE["payload"])
+
+    try:
+        chain = verify_hash_chain()
+        replay = replay_ledger_balances()
+        payload = {
+            "hash_chain_ok": chain.ok,
+            "hash_chain_detail": chain.detail,
+            "balance_replay_ok": replay.ok,
+            "balance_replay_detail": replay.detail,
+        }
+    except Exception as exc:
+        payload = {
+            "hash_chain_ok": None,
+            "hash_chain_detail": f"deep replay failed: {exc}",
+            "balance_replay_ok": None,
+            "balance_replay_detail": f"deep replay failed: {exc}",
+        }
+
+    with _DEEP_REPLAY_LOCK:
+        _DEEP_REPLAY_CACHE["payload"] = payload
+        _DEEP_REPLAY_CACHE["expires_at"] = now + float(ttl_seconds)
+    return dict(payload)
+
+
+def dashboard_payload(limit: int = 120, include_deep_replay: bool = False) -> dict:
     ready, readiness = readiness_report()
     alerts = list(readiness.get("alerts", []))
     metrics = get_metrics()
@@ -88,17 +133,22 @@ def dashboard_payload(limit: int = 120) -> dict:
         "stale_reservations": int(metrics.get("stale_reservations", 0) or 0),
     }
 
+    if include_deep_replay:
+        replay_payload = _deep_replay_payload()
+    else:
+        replay_payload = {
+            "hash_chain_ok": metrics.get("hash_chain_ok"),
+            "hash_chain_detail": metrics.get("hash_chain_detail"),
+            "balance_replay_ok": None,
+            "balance_replay_detail": "skipped (include_deep_replay=false)",
+        }
+
     return {
         "summary": summary,
         "health": health,
         "ready": readiness,
         "metrics": metrics,
-        "replay": {
-            "hash_chain_ok": chain.ok,
-            "hash_chain_detail": chain.detail,
-            "balance_replay_ok": replay.ok,
-            "balance_replay_detail": replay.detail,
-        },
+        "replay": replay_payload,
         "activity": activity_snapshot(limit=limit),
         "alerts": alerts,
         "alert_summary": summarize_alerts(alerts),

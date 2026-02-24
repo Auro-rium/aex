@@ -51,3 +51,4 @@ aex migrate rollback --tag pre_change
 - Vercel edge proxy: `deploy/vercel/vercel.json`
 - set proxy destination to your backend domain
 - smoke check: `scripts/prod_smoke.sh`
+- real production checks (auth + proxy + idempotency): `python3 scripts/prod_real_checks.py --base-url <url> --token <agent_token>`

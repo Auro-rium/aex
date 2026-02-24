@@ -145,6 +145,11 @@ async def admit_request(
     project_id = (agent_info.get("project_id") or "default").strip() or "default"
 
     cached = get_execution_cache(execution_id)
+    if cached and cached.request_hash and cached.request_hash != request_hash:
+        raise HTTPException(
+            status_code=409,
+            detail="Idempotency conflict: execution_id is already bound to a different request hash",
+        )
     if cached and cached.state in {"COMMITTED", "DENIED", "RELEASED", "FAILED"}:
         return AdmissionResult(
             execution_id=execution_id,

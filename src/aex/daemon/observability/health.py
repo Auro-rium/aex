@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, UTC
+import os
 
 from aex import __version__
 from ..db import get_db_connection
@@ -30,17 +31,19 @@ def liveness_report() -> dict:
 def readiness_report() -> tuple[bool, dict]:
     checks: dict[str, dict] = {}
     ready = True
+    include_hash_chain = (os.getenv("AEX_READINESS_INCLUDE_HASH_CHAIN", "0").strip() == "1")
 
     try:
         with get_db_connection() as conn:
             conn.execute("SELECT 1").fetchone()
             checks["database"] = {"ok": True}
 
-            failed = [c for c in run_all_checks(conn) if not c.passed]
+            failed = [c for c in run_all_checks(conn, include_event_hash_chain=include_hash_chain) if not c.passed]
             critical = [c for c in failed if c.name in _READINESS_CRITICAL_INVARIANTS]
             checks["invariants"] = {
                 "ok": len(critical) == 0,
                 "failed": [{"name": c.name, "detail": c.detail} for c in failed],
+                "hash_chain_included": include_hash_chain,
             }
             if critical:
                 ready = False

@@ -52,6 +52,7 @@ class ReservationDecision:
 @dataclass
 class CachedExecutionResult:
     state: str
+    request_hash: str | None
     status_code: int | None
     response_body: dict | None
     error_body: dict | None
@@ -137,13 +138,14 @@ def _sync_agent_budget_scope(conn, *, agent: str, tenant_id: str, project_id: st
 def get_execution_cache(execution_id: str) -> CachedExecutionResult | None:
     with get_db_connection() as conn:
         row = conn.execute(
-            "SELECT state, status_code, response_body, error_body FROM executions WHERE execution_id = ?",
+            "SELECT state, request_hash, status_code, response_body, error_body FROM executions WHERE execution_id = ?",
             (execution_id,),
         ).fetchone()
         if not row:
             return None
         return CachedExecutionResult(
             state=row["state"],
+            request_hash=row["request_hash"],
             status_code=row["status_code"],
             response_body=_json_or_none(row["response_body"]),
             error_body=_json_or_none(row["error_body"]),

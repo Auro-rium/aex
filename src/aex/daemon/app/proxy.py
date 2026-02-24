@@ -105,13 +105,17 @@ def _build_responses_upstream(body: dict, model_config) -> dict:
 
 
 def _build_embeddings_upstream(body: dict, model_config) -> dict:
-    return {
+    upstream = {
         "model": model_config.provider_model,
         "input": body.get("input"),
-        "encoding_format": body.get("encoding_format", "float"),
-        "dimensions": body.get("dimensions"),
-        "user": body.get("user"),
     }
+    if body.get("encoding_format") is not None:
+        upstream["encoding_format"] = body["encoding_format"]
+    if body.get("dimensions") is not None:
+        upstream["dimensions"] = body["dimensions"]
+    if body.get("user") is not None:
+        upstream["user"] = body["user"]
+    return upstream
 
 
 def _resolve_provider_api_key(agent_info: dict, request: Request, provider_name: str) -> str:

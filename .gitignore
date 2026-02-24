@@ -48,6 +48,7 @@ htmlcov/
 *.bak
 *.orig
 *.rej
+scripts/prod_checks/results/
 
 # OS
 .DS_Store

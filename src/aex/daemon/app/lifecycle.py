@@ -30,16 +30,46 @@ async def get_http_client() -> httpx.AsyncClient:
 
 async def startup_event(app):
     """Called on FastAPI startup."""
-    init_db()
-    if not check_db_integrity():
-        logger.critical("Database integrity check failed on startup. Exiting.")
-        os._exit(1)
+    strict_startup = (os.getenv("AEX_STARTUP_STRICT", "0").strip() == "1")
+    init_timeout_sec = max(5, int(os.getenv("AEX_STARTUP_INIT_TIMEOUT_SECONDS", "30")))
+    recovery_timeout_sec = max(5, int(os.getenv("AEX_STARTUP_RECOVERY_TIMEOUT_SECONDS", "30")))
 
-    config_loader.load_config()
+    try:
+        await asyncio.wait_for(asyncio.to_thread(init_db), timeout=init_timeout_sec)
+    except Exception as exc:
+        logger.error("Startup database init failed", error=str(exc), strict=strict_startup)
+        if strict_startup:
+            os._exit(1)
 
-    logger.info("Running crash recovery sweep...")
-    recovery_summary = reconcile_incomplete_executions()
-    logger.info("Recovery summary", **recovery_summary)
+    try:
+        ok = await asyncio.wait_for(asyncio.to_thread(check_db_integrity), timeout=init_timeout_sec)
+        if not ok:
+            logger.error("Startup database integrity failed", strict=strict_startup)
+            if strict_startup:
+                os._exit(1)
+    except Exception as exc:
+        logger.error("Startup database integrity error", error=str(exc), strict=strict_startup)
+        if strict_startup:
+            os._exit(1)
+
+    try:
+        config_loader.load_config()
+    except Exception as exc:
+        logger.error("Config load failed on startup", error=str(exc), strict=strict_startup)
+        if strict_startup:
+            os._exit(1)
+
+    try:
+        logger.info("Running crash recovery sweep...")
+        recovery_summary = await asyncio.wait_for(
+            asyncio.to_thread(reconcile_incomplete_executions),
+            timeout=recovery_timeout_sec,
+        )
+        logger.info("Recovery summary", **recovery_summary)
+    except Exception as exc:
+        logger.error("Startup recovery sweep failed", error=str(exc), strict=strict_startup)
+        if strict_startup:
+            os._exit(1)
 
     asyncio.create_task(enforcement_loop())
 
