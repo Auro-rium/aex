@@ -109,9 +109,16 @@ def _build_embeddings_upstream(body: dict, model_config) -> dict:
         "model": model_config.provider_model,
         "input": body.get("input"),
     }
+    provider_name = str(getattr(model_config, "provider", "") or "").strip().lower()
+    unsupported_dims_raw = os.getenv("AEX_EMBEDDINGS_DIMENSIONS_UNSUPPORTED_PROVIDERS", "groq")
+    unsupported_dims_providers = {
+        p.strip().lower()
+        for p in unsupported_dims_raw.split(",")
+        if p.strip()
+    }
     if body.get("encoding_format") is not None:
         upstream["encoding_format"] = body["encoding_format"]
-    if body.get("dimensions") is not None:
+    if body.get("dimensions") is not None and provider_name not in unsupported_dims_providers:
         upstream["dimensions"] = body["dimensions"]
     if body.get("user") is not None:
         upstream["user"] = body["user"]
