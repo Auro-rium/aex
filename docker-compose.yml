@@ -1,31 +1,19 @@
-services:
-  postgres:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: aex
-      POSTGRES_USER: aex
-      POSTGRES_PASSWORD: aex
-    volumes:
-      - aex_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aex -d aex"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "${AEX_POSTGRES_HOST_PORT:-5433}:5432"
+# Local dev against Neon PostgreSQL — no local Postgres container.
+# Set AEX_PG_DSN to your Neon connection string before running:
+#   export AEX_PG_DSN="postgresql://<user>:<pass>@<neon-host>/<db>?sslmode=require"
+#   docker compose up
 
+services:
   aex:
     build: .
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      AEX_PG_DSN: ${AEX_PG_DSN:-postgresql://aex:aex@postgres:5432/aex}
+      AEX_PG_DSN: ${AEX_PG_DSN:?AEX_PG_DSN must be set to your Neon DSN}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AEX_ADMIN_CONTROL_KEY: ${AEX_ADMIN_CONTROL_KEY:-}
+      AEX_STARTUP_STRICT: ${AEX_STARTUP_STRICT:-1}
+      AEX_LOG_LEVEL: ${AEX_LOG_LEVEL:-INFO}
       AEX_ALERT_STALE_RESERVATIONS: 20
       AEX_ALERT_NON_TERMINAL_EXECUTIONS: 50
       AEX_ALERT_DENIED_RATIO: 0.50
@@ -38,6 +26,3 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-
-volumes:
-  aex_pgdata:

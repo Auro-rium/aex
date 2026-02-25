@@ -1,17 +1,43 @@
+# Version control
 .git
 .gitignore
+.gitattributes
+
+# Python bytecode
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Test + CI artifacts
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.egg-info/
+
+# Local virtualenvs
 .venv/
+venv/
 aex_env/
+
+# Build artifacts
 build/
 dist/
-*.egg-info/
-.aex/
+
+# Dev-only directories (not needed in Docker image)
 tests/
+scripts/
+real_agents/
+deploy/
 docs/
+
+# Config/secrets (never bake into image; inject via env at runtime)
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.aex/
+.DS_Store
+*.swp
+*.swo

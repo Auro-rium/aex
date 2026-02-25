@@ -4,7 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     AEX_CONFIG_DIR=/etc/aex/config \
-    AEX_LOG_DIR=/var/log/aex
+    AEX_LOG_DIR=/var/log/aex \
+    AEX_LOG_LEVEL=INFO \
+    AEX_STARTUP_STRICT=1
 
 WORKDIR /app
 
