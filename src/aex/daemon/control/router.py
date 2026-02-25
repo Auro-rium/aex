@@ -19,6 +19,7 @@ class RoutePlan:
 
 
 _ENDPOINT_PATH = {
+    "/v1/chat": "/chat/completions",
     "/v1/chat/completions": "/chat/completions",
     "/openai/v1/chat/completions": "/chat/completions",
     "/v1/responses": "/responses",
