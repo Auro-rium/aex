@@ -77,12 +77,6 @@ def _scope(tenant_id: str | None, project_id: str | None) -> tuple[str, str]:
     return tenant, project
 
 
-def _begin_serializable(conn) -> None:
-    """Start an explicit SERIALIZABLE transaction for accounting-critical paths."""
-    conn.execute("BEGIN")
-    conn.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
-
-
 def _sync_agent_budget_scope(conn, *, agent: str, tenant_id: str, project_id: str) -> None:
     """Materialize agent-level budget counters into normalized budgets/quota tables."""
     row = conn.execute(
@@ -186,7 +180,7 @@ def reserve_budget_v2(
     with get_db_connection() as conn:
         cursor = conn.cursor()
         try:
-            _begin_serializable(conn)
+            cursor.execute("BEGIN IMMEDIATE")
 
             agent_row = cursor.execute(
                 """
@@ -420,7 +414,7 @@ def reserve_budget_v2(
 def mark_execution_dispatched(execution_id: str) -> None:
     with get_db_connection() as conn:
         try:
-            _begin_serializable(conn)
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
                 """
                 SELECT state, agent,
@@ -477,7 +471,7 @@ def commit_execution_usage(
 
     with get_db_connection() as conn:
         try:
-            _begin_serializable(conn)
+            conn.execute("BEGIN IMMEDIATE")
 
             execution_row = conn.execute(
                 """
@@ -629,7 +623,7 @@ def release_execution_reservation(
 
     with get_db_connection() as conn:
         try:
-            _begin_serializable(conn)
+            conn.execute("BEGIN IMMEDIATE")
 
             execution_row = conn.execute(
                 """
@@ -723,7 +717,7 @@ def mark_execution_failed(execution_id: str, *, reason: str, status_code: int = 
 
     with get_db_connection() as conn:
         try:
-            _begin_serializable(conn)
+            conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
                 """
                 SELECT agent, state,

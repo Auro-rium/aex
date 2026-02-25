@@ -100,23 +100,6 @@
       box-shadow: inset 0 0 0 1px rgba(55, 197, 180, 0.35);
     }
 
-    .btn.warn-btn {
-      border-color: rgba(232, 183, 53, 0.55);
-    }
-
-    .btn.warn-btn:hover {
-      border-color: rgba(232, 183, 53, 0.9);
-    }
-
-    .btn.danger-btn {
-      border-color: rgba(255, 102, 102, 0.65);
-      background: rgba(75, 24, 24, 0.82);
-    }
-
-    .btn.danger-btn:hover {
-      border-color: rgba(255, 102, 102, 0.95);
-    }
-
     .input, .select {
       outline: none;
       min-width: 120px;
@@ -407,35 +390,6 @@
       padding: 8px 4px;
     }
 
-    .onboard-grid {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      align-items: end;
-      margin-bottom: 10px;
-    }
-
-    .onboard-output {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr 1fr;
-      margin-top: 8px;
-    }
-
-    .codebox {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      min-height: 108px;
-      font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
-      font-size: 0.73rem;
-      color: #c4ece4;
-    }
-
-    @media (max-width: 1080px) {
-      .onboard-output { grid-template-columns: 1fr; }
-    }
-
     @media (max-width: 1080px) {
       .split { grid-template-columns: 1fr; }
       .explorer-grid { grid-template-columns: 1fr; }
@@ -460,73 +414,6 @@
         </select>
         <button id="toggle-refresh" class="btn" type="button">Pause</button>
         <button id="refresh-now" class="btn" type="button">Refresh</button>
-        <a class="btn" href="/admin/console">Command Center</a>
-        <button id="pause-all" class="btn warn-btn" type="button">Pause All</button>
-        <button id="sandbox-all" class="btn warn-btn" type="button">Sandbox All</button>
-        <button id="kill-all" class="btn danger-btn" type="button">Kill All Agents</button>
-        <input id="control-key" class="input mono" type="password" placeholder="admin key (optional)">
-      </div>
-    </div>
-
-    <div class="grid full">
-      <div class="card">
-        <h2>No-Code Onboarding</h2>
-        <div class="onboard-grid">
-          <div class="control-cell">
-            <label class="control-label" for="onb-tenant">Tenant</label>
-            <input id="onb-tenant" class="input mono" type="text" value="default">
-          </div>
-          <div class="control-cell">
-            <label class="control-label" for="onb-project">Project</label>
-            <input id="onb-project" class="input mono" type="text" value="default">
-          </div>
-          <div class="control-cell">
-            <label class="control-label" for="onb-agent">Agent Name</label>
-            <input id="onb-agent" class="input mono" type="text" placeholder="auto-generated">
-          </div>
-          <div class="control-cell">
-            <label class="control-label" for="onb-budget">Budget (USD)</label>
-            <input id="onb-budget" class="input mono" type="number" min="0.01" step="0.01" value="20">
-          </div>
-          <div class="control-cell">
-            <label class="control-label" for="onb-rpm">RPM</label>
-            <input id="onb-rpm" class="input mono" type="number" min="1" step="1" value="240">
-          </div>
-          <div class="control-cell">
-            <label class="control-label" for="onb-passthrough">Provider Key Passthrough</label>
-            <select id="onb-passthrough" class="select mono">
-              <option value="0" selected>disabled</option>
-              <option value="1">enabled</option>
-            </select>
-          </div>
-          <div class="control-cell">
-            <label class="control-label">Actions</label>
-            <button id="onb-create" class="btn" type="button">Create Connect Pack</button>
-          </div>
-        </div>
-        <div class="status-row" style="margin-bottom:8px;">
-          <span id="onb-status" class="mono">Create once in UI, then only set env in your framework runtime.</span>
-          <button id="onb-copy-env" class="btn" type="button">Copy .env</button>
-          <button id="onb-copy-curl" class="btn" type="button">Copy Smoke Curl</button>
-        </div>
-        <div class="onboard-output">
-          <div class="detail">
-            <div class="kpi-label">Environment Block</div>
-            <pre id="onb-env" class="codebox">AEX_ENABLE=1
-AEX_MODE=proxy
-AEX_BASE_URL=https://aex-production.up.railway.app
-AEX_API_KEY=&lt;created-from-ui&gt;
-OPENAI_BASE_URL=https://aex-production.up.railway.app/v1
-OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
-          </div>
-          <div class="detail">
-            <div class="kpi-label">Smoke Test</div>
-            <pre id="onb-curl" class="codebox">curl -sS -X POST 'https://aex-production.up.railway.app/v1/chat/completions' \
-  -H 'Authorization: Bearer &lt;aex_token&gt;' \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"gpt-oss-20b","messages":[{"role":"user","content":"reply with ok"}]}'</pre>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -716,58 +603,6 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
       const msg = $("last-updated");
       msg.textContent = text;
       msg.style.color = error ? "#ff9c9c" : "";
-    }
-
-    async function copyText(text) {
-      if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (_) {
-        const area = document.createElement("textarea");
-        area.value = text;
-        document.body.appendChild(area);
-        area.select();
-        document.execCommand("copy");
-        document.body.removeChild(area);
-      }
-    }
-
-    function setOnboardingStatus(text, error = false) {
-      const node = $("onb-status");
-      if (!node) return;
-      node.textContent = text;
-      node.style.color = error ? "#ff9c9c" : "var(--muted)";
-    }
-
-    async function createConnectPack() {
-      const controlKey = safe($("control-key").value || "").trim();
-      const headers = { "Content-Type": "application/json" };
-      if (controlKey) {
-        headers["x-aex-admin-key"] = controlKey;
-      }
-      const payload = {
-        tenant_id: safe($("onb-tenant").value || "").trim() || "default",
-        project_id: safe($("onb-project").value || "").trim() || "default",
-        agent_name: safe($("onb-agent").value || "").trim() || null,
-        budget_usd: Number($("onb-budget").value || 20),
-        rpm_limit: Number($("onb-rpm").value || 240),
-        allow_passthrough: $("onb-passthrough").value === "1",
-      };
-      const res = await fetch("/admin/onboarding/quickstart", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      $("onb-env").textContent = safe(data.env_block);
-      $("onb-curl").textContent = safe(data.smoke_curl);
-      setOnboardingStatus(
-        `Created agent=${safe(data.agent_name)} tenant=${safe(data.tenant_id)} project=${safe(data.project_id)}`
-      );
     }
 
     function createExecutionStateBars(stateMap) {
@@ -1037,15 +872,9 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
       setText("daemon-status", safe(health.status || "unknown").toUpperCase());
       setText("daemon-version", `version=${safe(health.version || "?")}`);
       setText("total-requests", safe(metrics.total_requests ?? 0));
-      setText(
-        "total-denials",
-        `Denied budget=${safe(metrics.total_denied_budget ?? 0)} rate=${safe(metrics.total_denied_rate_limit ?? 0)} policy=${safe(metrics.total_policy_violations ?? 0)}`
-      );
+      setText("total-denials", `Denied budget=${safe(metrics.total_denied_budget ?? 0)} rate=${safe(metrics.total_denied_rate_limit ?? 0)}`);
       setText("spent-usd", usd(metrics.total_spent_global_usd));
-      setText(
-        "exec-total",
-        `Executions: ${safe(metrics.total_executions ?? 0)} · Steps: ${safe(metrics.total_agent_steps ?? 0)} · Tool calls: ${safe(metrics.total_tool_calls ?? 0)}`
-      );
+      setText("exec-total", `Executions: ${safe(metrics.total_executions ?? 0)}`);
       setText("tenant-total", safe(metrics.total_tenants ?? 0));
       setText("project-total", `Projects: ${safe(metrics.total_projects ?? 0)}`);
       setText("stale-res", safe(metrics.stale_reservations ?? 0));
@@ -1090,25 +919,6 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
       return await res.json();
     }
 
-    async function runControlAction(path, reason, confirmText) {
-      if (!window.confirm(confirmText)) return null;
-      const controlKey = safe($("control-key").value || "").trim();
-      const headers = { "Content-Type": "application/json" };
-      if (controlKey) {
-        headers["x-aex-admin-key"] = controlKey;
-      }
-      const res = await fetch(path, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`control action failed: ${text || res.status}`);
-      }
-      return await res.json();
-    }
-
     async function tick() {
       try {
         const data = await loadData();
@@ -1133,12 +943,6 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
     }
 
     function bindControls() {
-      const controlKeyInput = $("control-key");
-      controlKeyInput.value = localStorage.getItem("aex_admin_key") || "";
-      controlKeyInput.addEventListener("change", () => {
-        localStorage.setItem("aex_admin_key", controlKeyInput.value || "");
-      });
-
       $("toggle-refresh").addEventListener("click", () => {
         state.polling = !state.polling;
         $("toggle-refresh").textContent = state.polling ? "Pause" : "Resume";
@@ -1146,56 +950,6 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
       });
 
       $("refresh-now").addEventListener("click", () => tick());
-
-      $("pause-all").addEventListener("click", async () => {
-        try {
-          const payload = await runControlAction(
-            "/admin/control/pause_all",
-            "dashboard pause all",
-            "Pause all active agents?"
-          );
-          if (payload) {
-            setStatusMessage(`pause_all updated=${safe(payload.updated_agents)}`);
-            tick();
-          }
-        } catch (err) {
-          setStatusMessage("pause_all failed", true);
-        }
-      });
-
-      $("sandbox-all").addEventListener("click", async () => {
-        try {
-          const payload = await runControlAction(
-            "/admin/control/sandbox_all",
-            "dashboard sandbox all",
-            "Move all active agents to QUARANTINED?"
-          );
-          if (payload) {
-            setStatusMessage(`sandbox_all updated=${safe(payload.updated_agents)}`);
-            tick();
-          }
-        } catch (err) {
-          setStatusMessage("sandbox_all failed", true);
-        }
-      });
-
-      $("kill-all").addEventListener("click", async () => {
-        try {
-          const payload = await runControlAction(
-            "/admin/control/kill_all",
-            "dashboard kill all",
-            "Kill all agents and stop active processes?"
-          );
-          if (payload) {
-            setStatusMessage(
-              `kill_all updated=${safe(payload.updated_agents)} signaled=${safe(payload.pids_signaled)}`
-            );
-            tick();
-          }
-        } catch (err) {
-          setStatusMessage("kill_all failed", true);
-        }
-      });
 
       $("refresh-interval").addEventListener("change", (e) => {
         state.pollMs = Number(e.target.value || 3000);
@@ -1233,25 +987,6 @@ OPENAI_API_KEY=&lt;same-aex-token&gt;</pre>
         $("filter-events").value = "all";
         $("focus-selected").checked = false;
         renderAllFromCache();
-      });
-
-      $("onb-create").addEventListener("click", async () => {
-        try {
-          await createConnectPack();
-          tick();
-        } catch (err) {
-          setOnboardingStatus(`create failed: ${safe(err && err.message ? err.message : err)}`, true);
-        }
-      });
-
-      $("onb-copy-env").addEventListener("click", async () => {
-        await copyText($("onb-env").textContent || "");
-        setOnboardingStatus("Copied .env block");
-      });
-
-      $("onb-copy-curl").addEventListener("click", async () => {
-        await copyText($("onb-curl").textContent || "");
-        setOnboardingStatus("Copied smoke curl");
       });
 
       document.querySelectorAll("th.sortable").forEach((th) => {

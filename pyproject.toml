@@ -28,10 +28,11 @@ dependencies = [
     "httpx>=0.27",
     "pydantic>=2.6",
     "psycopg[binary]>=3.2",
+    "typer>=0.9",
+    "rich>=13.7",
     "psutil>=5.9",
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
-    "redis>=5.0",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,9 @@ dev = ["langgraph>=0.2"]
 Homepage = "https://github.com/Auro-rium/aex"
 Repository = "https://github.com/Auro-rium/aex"
 Issues = "https://github.com/Auro-rium/aex/issues"
+
+[project.scripts]
+aex = "aex.cli:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

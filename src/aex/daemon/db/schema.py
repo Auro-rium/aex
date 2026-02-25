@@ -58,8 +58,6 @@ _REQUIRED_TABLES = (
     "memberships",
     "budgets",
     "quota_limits",
-    "policy_bindings",
-    "invariant_runs",
     "webhook_subscriptions",
     "webhook_deliveries",
 )
@@ -299,40 +297,6 @@ _TABLE_DDL = {
             CHECK (concurrent_limit IS NULL OR concurrent_limit >= 0)
         )
     """,
-    "policy_bindings": """
-        CREATE TABLE IF NOT EXISTS policy_bindings (
-            id BIGSERIAL PRIMARY KEY,
-            tenant_id TEXT NOT NULL,
-            project_id TEXT,
-            agent TEXT,
-            policy_id TEXT NOT NULL,
-            policy_json TEXT NOT NULL DEFAULT '{}',
-            enabled INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
-            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
-            FOREIGN KEY(agent) REFERENCES agents(name) ON DELETE CASCADE,
-            CHECK (enabled IN (0, 1))
-        )
-    """,
-    "invariant_runs": """
-        CREATE TABLE IF NOT EXISTS invariant_runs (
-            id BIGSERIAL PRIMARY KEY,
-            tenant_id TEXT NOT NULL DEFAULT 'default',
-            scope TEXT NOT NULL DEFAULT 'global',
-            passed INTEGER NOT NULL,
-            fail_count INTEGER NOT NULL DEFAULT 0,
-            summary_json TEXT NOT NULL DEFAULT '{}',
-            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            finished_at TEXT,
-            duration_ms INTEGER,
-            FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
-            CHECK (passed IN (0, 1)),
-            CHECK (fail_count >= 0),
-            CHECK (duration_ms IS NULL OR duration_ms >= 0)
-        )
-    """,
     "webhook_subscriptions": """
         CREATE TABLE IF NOT EXISTS webhook_subscriptions (
             id BIGSERIAL PRIMARY KEY,
@@ -488,9 +452,6 @@ _INDEX_DDL = (
     "CREATE INDEX IF NOT EXISTS idx_tool_plugins_enabled_name ON tool_plugins(enabled, name)",
     "CREATE INDEX IF NOT EXISTS idx_budgets_tenant_scope ON budgets(tenant_id, scope_type, period)",
     "CREATE INDEX IF NOT EXISTS idx_quota_limits_tenant ON quota_limits(tenant_id, scope_key)",
-    "CREATE INDEX IF NOT EXISTS idx_policy_bindings_scope ON policy_bindings(tenant_id, project_id, agent, enabled)",
-    "CREATE INDEX IF NOT EXISTS idx_policy_bindings_policy_id ON policy_bindings(policy_id)",
-    "CREATE INDEX IF NOT EXISTS idx_invariant_runs_tenant_started ON invariant_runs(tenant_id, started_at)",
     "CREATE INDEX IF NOT EXISTS idx_webhook_subscriptions_tenant_enabled ON webhook_subscriptions(tenant_id, enabled)",
     "CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_tenant_status ON webhook_deliveries(tenant_id, status, created_at)",
 )

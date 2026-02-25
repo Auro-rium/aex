@@ -75,9 +75,8 @@ def run(
     chat_model: str,
     embedding_model: str,
     passthrough_provider_key: bool,
-    include_embeddings: bool = True,
 ) -> list[CheckResult]:
-    checks: list[CheckResult] = [
+    checks = [
         client.run_check(
             name="proxy_chat_completions_real",
             category="proxy",
@@ -98,20 +97,17 @@ def run(
             validator=_responses_validator,
             passthrough_provider_key=passthrough_provider_key,
         ),
+        client.run_check(
+            name="proxy_embeddings_real",
+            category="proxy",
+            method="POST",
+            path="/v1/embeddings",
+            auth=True,
+            json_body=_embeddings_body(embedding_model),
+            validator=_embeddings_validator,
+            passthrough_provider_key=passthrough_provider_key,
+        ),
     ]
-    if include_embeddings:
-        checks.append(
-            client.run_check(
-                name="proxy_embeddings_real",
-                category="proxy",
-                method="POST",
-                path="/v1/embeddings",
-                auth=True,
-                json_body=_embeddings_body(embedding_model),
-                validator=_embeddings_validator,
-                passthrough_provider_key=passthrough_provider_key,
-            )
-        )
 
     # Add raw payload snippets to failing details for faster break triage.
     for result in checks:

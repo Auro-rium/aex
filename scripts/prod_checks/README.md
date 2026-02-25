@@ -14,8 +14,6 @@ This test pack validates a live `v2.1` deployment using real API calls.
   - same `Idempotency-Key` + same payload replay behavior
   - same `Idempotency-Key` + different payload conflict behavior (`409`)
 
-If embeddings are out of scope for your rollout, use `--skip-embeddings`.
-
 ## Required Inputs
 
 - `AEX_PROD_BASE_URL` (example: `https://your-aex-service.example.com`)
@@ -34,8 +32,7 @@ Optional:
 cd /home/lenovo/Documents/aex
 python3 scripts/prod_real_checks.py \
   --base-url "$AEX_PROD_BASE_URL" \
-  --token "$AEX_PROD_AGENT_TOKEN" \
-  --skip-embeddings
+  --token "$AEX_PROD_AGENT_TOKEN"
 ```
 
 With passthrough provider key:
