@@ -59,6 +59,7 @@ def dispatch_budget_webhooks(
             if allowed and event_type not in allowed and "*" not in allowed:
                 continue
 
+            created_at = _utc_now_iso()
             payload_text = json.dumps(payload, ensure_ascii=True, sort_keys=True)
             cursor = conn.execute(
                 """
@@ -74,7 +75,7 @@ def dispatch_budget_webhooks(
                     event_type,
                     execution_id,
                     payload_text,
-                    _utc_now_iso(),
+                    created_at,
                 ),
             )
             inserted = cursor.fetchone()
@@ -84,23 +85,28 @@ def dispatch_budget_webhooks(
                     "subscription_id": int(row["id"]),
                     "url": str(row["url"]),
                     "secret": str(row["secret"] or ""),
+                    "created_at": created_at,
                 }
             )
         conn.commit()
 
     for sub in subscriptions:
+        event_id = f"wh_{sub['delivery_id']}"
         envelope = {
-            "event_id": f"wh_{sub['delivery_id']}",
+            "event_id": event_id,
             "event_type": event_type,
             "tenant_id": tenant_id,
             "execution_id": execution_id,
-            "ts": _utc_now_iso(),
+            # Keep stable across retries for downstream idempotency semantics.
+            "ts": sub["created_at"],
             "payload": payload,
         }
         body = json.dumps(envelope, ensure_ascii=True, sort_keys=True)
         headers = {
             "Content-Type": "application/json",
             "X-AEX-Event-Type": event_type,
+            "X-AEX-Event-Id": event_id,
+            "Idempotency-Key": event_id,
         }
         if sub["secret"]:
             headers["X-AEX-Signature"] = _signature(sub["secret"], body)

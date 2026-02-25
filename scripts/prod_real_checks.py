@@ -72,6 +72,11 @@ def parse_args() -> argparse.Namespace:
         default=_env("AEX_TEST_EMBEDDING_MODEL", "text-embedding-3-small"),
         help="Model for embeddings checks",
     )
+    parser.add_argument(
+        "--skip-embeddings",
+        action="store_true",
+        help="Skip /v1/embeddings proxy validation (useful when embeddings are out of scope).",
+    )
     parser.add_argument("--tenant-id", default=_env("AEX_TENANT_ID"), help="Optional tenant header")
     parser.add_argument("--project-id", default=_env("AEX_PROJECT_ID"), help="Optional project header")
     parser.add_argument(
@@ -124,6 +129,7 @@ def main() -> int:
                 chat_model=ctx.chat_model,
                 embedding_model=ctx.embedding_model,
                 passthrough_provider_key=args.use_passthrough_provider_key,
+                include_embeddings=not args.skip_embeddings,
             )
         )
         results.extend(

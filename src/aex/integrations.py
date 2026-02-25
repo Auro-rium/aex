@@ -22,7 +22,7 @@ def get_agent_token(agent_name: str) -> str:
             ).fetchone()
     except Exception as exc:
         raise ValueError(
-            "AEX database is not reachable. Set AEX_PG_DSN and run 'aex init'."
+            "AEX database is not reachable. Set AEX_PG_DSN and initialize via /admin/console or startup init_db()."
         ) from exc
 
     if not row:

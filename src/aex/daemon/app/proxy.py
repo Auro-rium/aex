@@ -118,6 +118,8 @@ def _build_embeddings_upstream(body: dict, model_config) -> dict:
     }
     if body.get("encoding_format") is not None:
         upstream["encoding_format"] = body["encoding_format"]
+    else:
+        upstream["encoding_format"] = "float"
     if body.get("dimensions") is not None and provider_name not in unsupported_dims_providers:
         upstream["dimensions"] = body["dimensions"]
     if body.get("user") is not None:
@@ -507,10 +509,14 @@ async def proxy_tool_execute(
     )
 
 
+@router.post("/v1/chat")
 @router.post("/v1/chat/completions")
 @router.post("/openai/v1/chat/completions")
 async def proxy_chat_completions(request: Request, agent_info: dict = Depends(get_agent_from_token)):
-    return await _proxy_endpoint(request, agent_info, request.url.path)
+    endpoint = request.url.path
+    if endpoint == "/v1/chat":
+        endpoint = "/v1/chat/completions"
+    return await _proxy_endpoint(request, agent_info, endpoint)
 
 
 @router.post("/v1/embeddings")

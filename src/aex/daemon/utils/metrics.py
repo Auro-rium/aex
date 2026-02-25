@@ -33,7 +33,13 @@ def get_metrics() -> Dict[str, Any]:
         ).fetchone()[0]
         total_denied_rate_limit = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'RATE_LIMIT'").fetchone()[0]
         total_policy_violations = cursor.execute("SELECT COUNT(*) FROM events WHERE action = 'POLICY_VIOLATION'").fetchone()[0]
+        total_tool_calls = cursor.execute(
+            "SELECT COUNT(*) FROM events WHERE action IN ('TOOL_EXEC', 'TOOL_EXEC_DENIED')"
+        ).fetchone()[0]
         total_executions = cursor.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
+        total_agent_steps = cursor.execute(
+            "SELECT COUNT(*) FROM event_log WHERE execution_id IS NOT NULL"
+        ).fetchone()[0]
         stale_reservations = cursor.execute(
             "SELECT COUNT(*) FROM reservations WHERE state = 'RESERVED' AND NULLIF(expiry_at, '') IS NOT NULL AND CAST(NULLIF(expiry_at, '') AS timestamptz) < CURRENT_TIMESTAMP"
         ).fetchone()[0]
@@ -143,7 +149,9 @@ def get_metrics() -> Dict[str, Any]:
             "total_denied_budget": total_denied_budget,
             "total_denied_rate_limit": total_denied_rate_limit,
             "total_policy_violations": total_policy_violations,
+            "total_tool_calls": total_tool_calls,
             "total_executions": total_executions,
+            "total_agent_steps": total_agent_steps,
             "execution_states": execution_states,
             "stale_reservations": stale_reservations,
             "event_log_size": hash_chain_rows,
